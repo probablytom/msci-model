@@ -1,6 +1,6 @@
 import theatre_ag
 from utility_functions import flatten
-from random import random
+from random import random, choice
 
 
 class NotImplementedException(Exception):
@@ -36,7 +36,7 @@ class Constraint:
 class ResponsibleAgent(theatre_ag.Actor):
 
     def __init__(self, notions, *args, **kwargs):
-        super(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.responsibilities = notions  # Default beliefs about the world
         self.consequential_responsibilities = []  # All discharged constraints
 
@@ -131,7 +131,7 @@ class Lecturer(ResponsibleAgent):
 class Student(ResponsibleAgent):
 
     def __init__(self, *args, **kwargs):
-        super.__init__(self, *args, **kwargs)
+        super().__init__(*args, **kwargs)
 
     # TODO: How do students decide what they'll do next?
     def choose_action(self, responsibility):
@@ -146,7 +146,24 @@ class Student(ResponsibleAgent):
         pass
 
     # Students can write essays
-    def write_essay(self):
-        if random() > 0.1:
+    # RETURNS: tuple (a,b):
+    #     a: success bool
+    #     b: set of constraints with pass/failure
+    # TODO: Better done with fuzzimoss?
+    def write_essay(self, resp):
+        written_successfully = (random() > 0.1)
+        if written_successfully:
             self.essays_written += 1
+            # Essay writing responsibilities have deadlines and essay details
+            for i in range(len(resp.obligation.constraint_set)):
+                resp.obligation.constraint_set[i].record_outcome(True)
         else:
+            # Fail to write an essay one in ten times
+            for i in range(len(resp.obligation.constraint_set)):
+                resp.obligation.constraint_set[i].record_outcome(True)
+            # One constraint will have failed.
+            failed_responsibility = choice(
+                range(len(resp.obligation.constraint_set)))
+            resp.obligation.constraint_set[
+                failed_responsibility].record_outcome(False)
+        return (written_successfully, resp.obligation.constraint_set)
