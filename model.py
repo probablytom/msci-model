@@ -1,22 +1,33 @@
-from resp_classes import Student, Lecturer, Constraint, Responsibility
-from resp_classes import Obligation
+from resp_classes import Student, Lecturer, Constraint, Obligation
 from theatre_ag import SynchronizingClock
 
-global_clock = SynchronizingClock()
+# TODO: What's the model duration?
+global_clock = SynchronizingClock(max_ticks=100)
 
 # Create a bunch of lecturers and students.
 
+
+# TODO: What notions should a student have to begin with?
+
 students = []
 for i in range(5):
-    students.append(Student([], "student_"+str(i), global_clock))
+    curr_student = Student([], "student_"+str(i), global_clock)
+    curr_student.start()
+    students.append(curr_student)
+
+
+# TODO: What notions should a lecturer have to begin with?
 
 lecturers = []
 for i in range(3):
-    lecturers.append(Lecturer([], "lecturer_"+str(i), global_clock))
+    curr_lecturer = Lecturer([], "lecturer_"+str(i), global_clock)
+    curr_lecturer.start()
+    lecturers.append(curr_lecturer)
+
 
 # TODO: What's the best way to encode the constraint text?
-first_essay_deadline = Constraint('time', 'ticks = 10')
-second_essay_deadline = Constraint('time', 'ticks = 20')
+essay_deadline = Constraint('time', 'ticks = 10')
+programming_deadline = Constraint('time', 'ticks = 15')
 write_essay_constraint = Constraint('writing', 'essays_written += 1')
 write_code_constraint = Constraint('development', 'working_programs += 1')
 
@@ -24,7 +35,18 @@ write_code_constraint = Constraint('development', 'working_programs += 1')
 research_writing_duration = Constraint('time', 'ticks = 15')
 research_writing_activity = Constraint('writing', 'essays_written += 1')
 research_programming_duration = Constraint('time', 'ticks = 15')
-research_programming_activity = Constraint('development', 'working_programs += 1')
+research_programming_activity = Constraint('development',
+                                           'working_programs += 1')
+
+# Obligations that responsibilities can be made from
+essay_writing = Obligation([essay_deadline,
+                            write_essay_constraint])
+programming_assignment = Obligation([programming_deadline,
+                                     write_code_constraint])
+extra_writing = Obligation([research_writing_duration,
+                            research_writing_activity])
+extra_programming = Obligation([research_programming_duration,
+                                research_programming_activity])
 
 
 # Now we need to make something happen here.
@@ -32,6 +54,6 @@ research_programming_activity = Constraint('development', 'working_programs += 1
 # TODO: this model is going to move forward according to clock ticks. Should I
 # be manually ticking the clock? Do my agents need to do anything to make that
 # happen?
-#
-# TODO: Decide on exactly what happens on this model, semantically, and write it
-# in the README.
+
+global_clock.start()
+global_clock.wait_for_last_tick()
