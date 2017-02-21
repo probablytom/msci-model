@@ -35,6 +35,8 @@ class Constraint:
 # What are the differences between a theatre actor and a resp. actor?
 class ResponsibleAgent(theatre_ag.Actor):
 
+    responsible = True  # This will be a toggle for deactivating the formalism
+
     def __init__(self, notions, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.responsibilities = notions  # Default beliefs about the world

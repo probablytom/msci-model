@@ -53,7 +53,9 @@ extra_programming = Obligation([research_programming_duration,
 
 # TODO: this model is going to move forward according to clock ticks. Should I
 # be manually ticking the clock? Do my agents need to do anything to make that
-# happen?
+# happen? Also, is it *possible* to manually tick the clock, or do I need to put
+# in a workflow?
 
 global_clock.start()
 global_clock.wait_for_last_tick()
+print(global_clock.current_tick)
