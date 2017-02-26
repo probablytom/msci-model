@@ -1,4 +1,5 @@
 import theatre_ag
+from abc import abstractmethod, ABCMeta
 from .utility_functions import flatten, mean
 from .Constraints import Deadline, ResourceDelta
 from random import random, choice
@@ -48,6 +49,8 @@ class ResponsibleAgent(theatre_ag.Actor):
 
     responsible = True  # This will be a toggle for deactivating the formalism
 
+    __metaclass__ = ABCMeta
+
     def __init__(self, notions, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.responsibilities = notions  # Default beliefs about the world
@@ -59,6 +62,12 @@ class ResponsibleAgent(theatre_ag.Actor):
         # A responsible agent, when it has nothing to do, will pick another task
         # should it have one available. Otherwise, it will idle.
         self.idling = Idling()
+
+        # An act is a bound method. self.acts is a dictionary of the form:
+        #   {act: effect}
+        # ..where the effect is a dictionary of expected resource changes.
+        self.acts = {}
+        self.register_acts()
 
     def allocate_responsibility(self, resp):
         accepted = resp.delegee.allocate_responsibility(resp)
@@ -125,10 +134,21 @@ class ResponsibleAgent(theatre_ag.Actor):
                 self.responsibilities.remove(resp_chosen)
         return anything_to_discharge
 
+    @abstractmethod
+    def register_acts(self):
+        pass
+
 
 # TODO: Update with any lecturer-specific actions.
 # Lecturers exhibit primarily delegating behaviour!
 class Lecturer(ResponsibleAgent):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # There must be an attribute for every resource which can be effected as
+        # the result of a Constraints.ResourceDelta being discharged.
+        self.essays_written = 0
 
     # TODO: Do lecturers need to do this, given they don't discharge?
     #     (An action of theirs might be delegation?)
@@ -148,6 +168,33 @@ class Lecturer(ResponsibleAgent):
     def interpret(self, resp):
         pass
 
+    # Lecturers can write essays
+    # (We're calling papers essays, so as to simplify the model's ontology.)
+    # RETURNS: tuple (a,b):
+    #     a: success bool
+    #     b: set of constraints with pass/failure
+    # TODO: Better done with fuzzimoss?
+    def write_essay(self, resp):
+        written_successfully = (random() > 0.1)
+        if written_successfully:
+            self.essays_written += 1
+            # Essay writing responsibilities have deadlines and essay details
+            for i in range(len(resp.obligation.constraint_set)):
+                resp.obligation.constraint_set[i].record_outcome(True)
+        else:
+            # Fail to write an essay one in ten times
+            for i in range(len(resp.obligation.constraint_set)):
+                resp.obligation.constraint_set[i].record_outcome(True)
+            # One constraint will have failed.
+            failed_responsibility = choice(
+                range(len(resp.obligation.constraint_set)))
+            resp.obligation.constraint_set[
+                failed_responsibility].record_outcome(False)
+        return (written_successfully, resp.obligation.constraint_set)
+
+    def register_acts(self):
+        self.acts[self.write_essay] = {'essays_written': 1}
+
 
 # TODO: Update with any student-specific actions.
 # Students exhibit primarily discharging behaviour!
@@ -155,6 +202,10 @@ class Student(ResponsibleAgent):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        # There must be an attribute for every resource which can be effected as
+        # the result of a Constraints.ResourceDelta being discharged.
+        self.essays_written = 0
 
     # TODO: How do students decide what they'll do next?
     def choose_action(self, responsibility):
@@ -190,6 +241,9 @@ class Student(ResponsibleAgent):
             resp.obligation.constraint_set[
                 failed_responsibility].record_outcome(False)
         return (written_successfully, resp.obligation.constraint_set)
+
+    def register_acts(self):
+        self.acts[self.write_essay] = {'essays_written': 1}
 
 
 class Idling(theatre_ag.workflow.Idling):

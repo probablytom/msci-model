@@ -1,4 +1,4 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 from theatre_ag import SynchronizingClock
 
 
@@ -16,10 +16,10 @@ class AbstractConstraint:
 class Deadline(AbstractConstraint):
 
     def __init__(self,
-                 factors: dict,
+                 duration: int,
                  timeline: SynchronizingClock):
-        super().__init__(factors)
-        self.time_created = timeline.current_tick
+        super().__init__({})  # Deadlines have only one factor, which is special
+        self.time_created = timeline.current_tick  # This needs to be changed to time assigned
         self.timeline = timeline
 
     # TODO: REMOVE THIS IN FAVOUR OF AGENT_BASED EVALUATION
@@ -28,4 +28,5 @@ class Deadline(AbstractConstraint):
             (self.timeline.current_tick - self.time_created)
 
 
-class ResourceDelta(AbstractConstraint): pass
+class ResourceDelta(AbstractConstraint):
+    pass

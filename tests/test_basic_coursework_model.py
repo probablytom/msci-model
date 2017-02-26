@@ -1,4 +1,4 @@
-from resp_base import Student, Lecturer, Obligation, Deadline, Coursework_Body
+from resp_base import Student, Lecturer, Obligation, Deadline, ResourceDelta
 from theatre_ag import SynchronizingClock
 import unittest
 
@@ -16,7 +16,7 @@ class TestCourseworkModel(unittest.TestCase):
         # TODO: What notions should a student have to begin with?
 
         self.students = []
-        for i in range(student_count):
+        for i in range(self.student_count):
             curr_student = Student([], "student_"+str(i), self.global_clock)
             curr_student.start()
             self.students.append(curr_student)
@@ -24,57 +24,39 @@ class TestCourseworkModel(unittest.TestCase):
         # TODO: What notions should a lecturer have to begin with?
 
         self.lecturers = []
-        for i in range(lecturer_count):
+        for i in range(self.lecturer_count):
             curr_lecturer = Lecturer([], "lecturer_"+str(i), self.global_clock)
             curr_lecturer.start()
             self.lecturers.append(curr_lecturer)
 
         # We'll need some classes -- just collections of students
-        self.classes = [[]] * lecturer_count  # A class for every lecturer
+        self.classes = [[]] * self.lecturer_count  # A class for every lecturer
 
         # Should we randomise class allocation?
-        for i in range(student_count * semester_size):
-                self.classes[i % lecturer_count].append(
-                        self.students[i % student_count])
+        for i in range(self.student_count * self.semester_size):
+                self.classes[i % self.lecturer_count].append(
+                        self.students[i % self.student_count])
 
     def test_model_basic(self):
         # TODO: What's the best way to encode the constraint text?
-        essay_deadline = Deadline('time',
-                                  {'duration': 10},
-                                  self.global_clock)
-        programming_deadline = Deadline('time',
-                                        {'duration': 10},
-                                        self.global_clock)
-        write_essay_constraint = Coursework_Body('writing',
-                                                 {'essays_written':
-                                                         '+1'})
-        write_code_constraint = Coursework_Body('development',
-                                                {'working_programs':
-                                                        '+1'})
+        essay_deadline = Deadline(10, self.global_clock)
+        programming_deadline = Deadline(10, self.global_clock)
+        write_essay_constraint = ResourceDelta({'essays_written': 1})
+        write_code_constraint = ResourceDelta({'working_programs': 1})
 
-        # Extracurricular activity constraints:
-        research_writing_duration = Deadline('time',
-                                             {'duration': 10},
-                                             self.global_clock)
-        research_programming_duration = Deadline('time',
-                                                 {'duration': 10},
-                                                 self.global_clock)
-        research_writing_activity = Coursework_Body('writing',
-                                                    {'essays_written':
-                                                            '+1'})
-        research_programming_activity = Coursework_Body('development',
-                                                        {'working_programs':
-                                                             '+1'})
+        # Extracurricular activity durations:
+        research_writing_duration = Deadline(30, self.global_clock)
+        research_programming_duration = Deadline(30, self.global_clock)
 
         # Obligations that responsibilities can be made from
         essay_writing = Obligation([essay_deadline,
                                     write_essay_constraint])
         programming_assignment = Obligation([programming_deadline,
-                                            write_code_constraint])
+                                             write_code_constraint])
         extra_writing = Obligation([research_writing_duration,
-                                    research_writing_activity])
+                                    write_essay_constraint])
         extra_programming = Obligation([research_programming_duration,
-                                        research_programming_activity])
+                                        write_code_constraint])
 
         # Now we need to make something happen here.
 
