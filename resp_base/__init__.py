@@ -1,3 +1,4 @@
 from .Constraints import *
-from .resp_classes import *
+from .Agents import *
+from .Responsibilities import *
 from .utility_functions import *

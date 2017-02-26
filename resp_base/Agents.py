@@ -1,51 +1,16 @@
-import theatre_ag
-from abc import abstractmethod, ABCMeta
-from .utility_functions import flatten, mean
-from .Constraints import Deadline, ResourceDelta
+from theatre_ag import Actor as TheatreActor
+from theatre_ag.workflow import Idling as TheatreIdling
+from .Responsibilities import Responsibility
+from abc import ABCMeta, abstractmethod
+from .utility_functions import mean, flatten
 from random import random, choice
+
 
 class NotImplementedException(Exception):
     pass
 
 
-class Obligation:
-    def __init__(self, constraint_set):
-        self.constraint_set = constraint_set
-
-
-# An importance score set is deliberately seperate from the responsibility,
-# becase we allocate new importances to constraints every time we assign an
-# obligation.
-class ImportanceScoreSet:
-    def __init__(self, obligation, importances):
-        constraints = obligation.constraint_set
-        if len(constraints) != len(importances):
-            class MissingImportanceInformationException(Exception): pass
-            raise MissingImportanceInformationException()
-        self.constraints = constraints
-        self.importances = importances
-        self.importance_map = dict(zip(constraints, importances))
-
-
-class Responsibility:
-    def __init__(self, importance_score_set, authority, delegee):
-        self.importance_score_set = importance_score_set
-        self.constraints = importance_score_set.constraints
-        self.authority = authority
-        self.delegee = delegee
-
-    def calculate_effect(self):
-        total_effect = {}
-        for constraint in self.importance_score_set.constraints:
-            if isinstance(constraint, ResourceDelta):
-                for factor, effect in constraint.factors.items():
-                    if factor not in total_effect.keys():
-                        total_effect[factor] = 0
-                    total_effect[factor] += effect
-        return total_effect
-
-# What are the differences between a theatre actor and a resp. actor?
-class ResponsibleAgent(theatre_ag.Actor):
+class ResponsibleAgent(TheatreActor):
 
     responsible = True  # This will be a toggle for deactivating the formalism
 
@@ -79,7 +44,7 @@ class ResponsibleAgent(theatre_ag.Actor):
         return resp
 
     def accept_responsibility(self, resp: Responsibility):
-        interpretation = self.interpret(resp)
+        resp = self.interpret(resp)
         # TODO: fix this calculation
         accepted = mean(resp.importance_score_set.values()) > 0.5
         if accepted:
@@ -246,6 +211,6 @@ class Student(ResponsibleAgent):
         self.acts[self.write_essay] = {'essays_written': 1}
 
 
-class Idling(theatre_ag.workflow.Idling):
+class Idling(TheatreIdling):
     # TODO: make this default to
     pass
