@@ -19,8 +19,10 @@ class Deadline(AbstractConstraint):
                  duration: int,
                  timeline: SynchronizingClock):
         super().__init__({})  # Deadlines have only one factor, which is special
-        self.time_created = timeline.current_tick  # This needs to be changed to time assigned
+        # This needs to be changed to time assigned
+        self.time_created = timeline.current_tick
         self.timeline = timeline
+        self.duration = duration
 
     # TODO: REMOVE THIS IN FAVOUR OF AGENT_BASED EVALUATION
     def evaluate(self):

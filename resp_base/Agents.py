@@ -1,5 +1,8 @@
 from theatre_ag import Actor as TheatreActor
 from theatre_ag.workflow import Idling as TheatreIdling
+from theatre_ag import default_cost
+from theatre_ag.task import Task
+from theatre_ag.actor import OutOfTurnsException
 from .Responsibilities import Responsibility
 from abc import ABCMeta, abstractmethod
 from .utility_functions import mean, flatten
@@ -19,6 +22,7 @@ class ResponsibleAgent(TheatreActor):
     def __init__(self, notions, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.responsibilities = notions  # Default beliefs about the world
+        self.notions = notions
         self.consequential_responsibilities = []  # All discharged constraints
 
         # To be updated with the responsibility the current action represents
@@ -85,12 +89,16 @@ class ResponsibleAgent(TheatreActor):
         raise NotImplementedException("Return a function to be run to fulfil \
                                       a responsibility")
 
+    def choose_responsibility(self):
+        raise NotImplementedException("Decide how to choose a responsibilty")
+
     # Selects a responsibility to discharge, attempts to discharge it, and
     # modifies the list of responsibilities accordingly.
     def discharge(self):
         anything_to_discharge = len(self.responsibilities) > 0
         if anything_to_discharge:
             resp_chosen = self.choose_responsibility()
+            self.current_responsibility = resp_chosen
             discharge_function = self.choose_action(resp_chosen)
             discharged_successfully, constraint_satisfactions = \
                 discharge_function()
@@ -99,9 +107,43 @@ class ResponsibleAgent(TheatreActor):
                 self.responsibilities.remove(resp_chosen)
         return anything_to_discharge
 
+    def next_action(self):
+        anything_to_discharge =\
+                len(self.responsibilities) - len(self.notions) > 0
+        if anything_to_discharge:
+            resp_chosen = self.choose_responsibility()
+            discharge_function = self.choose_action(resp_chosen)
+        else:
+            discharge_function = self.idling.idle
+        return discharge_function
+
     @abstractmethod
     def register_acts(self):
         pass
+
+    # TODO: Add responsibilities to the task queue?
+    def perform(self):
+        while self.wait_for_directions or self.responsibilities == self.notions:
+            try:
+                next_action = self.next_action()
+                if next_action != self.idling.idle:
+                    duration = \
+                        self.current_responsibility.calculate_effect()['duration']
+                    task_function = default_cost(next_action, duration)
+
+                # TODO: Do we actually need to provide a workflow class here?
+                task = Task(None, task_function)
+
+                self._task_history.append(task)
+                self.current_task = task
+                task.entry_point(*task.args)
+
+            except OutOfTurnsException:
+                break
+
+        # Ensure that clock can proceed for other listeners.
+        self.clock.remove_tick_listener(self)
+        self.waiting_for_tick.set()
 
 
 # TODO: Update with any lecturer-specific actions.

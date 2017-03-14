@@ -32,11 +32,14 @@ class Responsibility:
         self.delegee = delegee
 
     def calculate_effect(self):
-        total_effect = {}
+        total_effect = {'duration': 0}
         for constraint in self.importance_score_set.constraints:
             if isinstance(constraint, ResourceDelta):
                 for factor, effect in constraint.factors.items():
                     if factor not in total_effect.keys():
                         total_effect[factor] = 0
                     total_effect[factor] += effect
+            elif isinstance(constraint, Deadline):
+                total_effect['duration'] += constraint.duration
+
         return total_effect
