@@ -3,3 +3,4 @@
 * Got to ad responsibilities to the task queue? What are the dangers in
   circumventing the Theatre task model?
 * Does the Task constructor actually need to be passed a Workflow class?
+* What do we do if no action can discharge an accepted responsibility?

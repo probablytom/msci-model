@@ -5,7 +5,7 @@ from theatre_ag.task import Task
 from theatre_ag.actor import OutOfTurnsException
 from .Responsibilities import Responsibility
 from abc import ABCMeta, abstractmethod
-from .utility_functions import mean, flatten
+from .utility_functions import mean, flatten, sign
 from random import random, choice
 
 
@@ -37,6 +37,14 @@ class ResponsibleAgent(TheatreActor):
         # ..where the effect is a dictionary of expected resource changes.
         self.acts = {}
         self.register_acts()
+
+        # Once we've got the acts, we need the act effect signs:
+        self.acts_effect_signs = {}
+        for act, effect in self.acts.items():
+            self.acts_effect_signs[act] = dict(zip(effect.keys(),
+                                           [sign(value)
+                                           for value in effect.values()]
+                                           ))
 
     def allocate_responsibility(self, resp):
         accepted = resp.delegee.allocate_responsibility(resp)
@@ -78,16 +86,25 @@ class ResponsibleAgent(TheatreActor):
         # Return the dictionary of degrees of responsibility by type
         return degree_responsible
 
-    # Worth noting: when an action's chosen, it needs to be put into a workflow
-    #     -> we need to keep track of *why* we're performing that action!
-    #     -> we need to know what responsibility we're discharging
     # RETURNS: a function which returns a tuple (a,b):
     #     a: the success or failure of the discharge
     #     b: the set of constraint satisfactions (the consequential
     #       responsibility)
+    # Will choose the first action which seems to move resources in the intended
+    # direction.
     def choose_action(self, responsibility):
-        raise NotImplementedException("Return a function to be run to fulfil \
-                                      a responsibility")
+        intended_effect = responsibility.calculate_effect()
+        effect_signs = dict(zip(intended_effect.keys(),
+                            [sign(value)
+                             for value in intended_effect.values()]
+                            ))
+        for act, act_effect_signs in self.acts_effect_signs.items():
+            if effect_signs == act_effect_signs:
+                return act
+        raise NotImplementedException("If no action can successfully \
+                                      discharge the responsibility, what do \
+                                      we do?")
+
 
     def choose_responsibility(self):
         raise NotImplementedException("Decide how to choose a responsibilty")
@@ -163,7 +180,7 @@ class Lecturer(ResponsibleAgent):
         pass
 
     # TODO: Modify this for judging student responsibility?
-#     def judge_degree_responsible(self, other_agent):
+    # def judge_degree_responsible(self, other_agent):
 
     # TODO: Decide whether to implement, given a lecturer doesn't discharge
     # responsibility.
