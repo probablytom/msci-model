@@ -4,3 +4,7 @@
   circumventing the Theatre task model?
 * Does the Task constructor actually need to be passed a Workflow class?
 * What do we do if no action can discharge an accepted responsibility?
+* When choosing a responsibility, implement an Eisenhower matrix so as to
+  account for urgency against importance
+* When choosing a responsibility, be smarter than just taking the mean of
+  its importances

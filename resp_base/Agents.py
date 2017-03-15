@@ -7,6 +7,7 @@ from .Responsibilities import Responsibility
 from abc import ABCMeta, abstractmethod
 from .utility_functions import mean, flatten, sign
 from random import random, choice
+from copy import copy
 
 
 class NotImplementedException(Exception):
@@ -105,9 +106,18 @@ class ResponsibleAgent(TheatreActor):
                                       discharge the responsibility, what do \
                                       we do?")
 
-
+    # Choose a responsibility with the highest average importance across various
+    # factors.
+    # TODO: make this smarter! Just taking the mean doesn't take into account
+    #     the nature of the importances.
+    # TODO: Consider deadlines! Implement an eisenhower matrix, to weigh
+    #     importance against urgency?
     def choose_responsibility(self):
-        raise NotImplementedException("Decide how to choose a responsibilty")
+        resps = copy(self.responsibilities)
+        resps = [resp for resp in resps if resp not in self.notions]
+        resp = max(resps,
+                   key=lambda x: mean(x.importance_score_set.importances))
+        return resp
 
     # Selects a responsibility to discharge, attempts to discharge it, and
     # modifies the list of responsibilities accordingly.
