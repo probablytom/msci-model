@@ -150,16 +150,22 @@ class ResponsibleAgent(TheatreActor):
 
     # TODO: Add responsibilities to the task queue?
     def perform(self):
-        while self.wait_for_directions or self.responsibilities == self.notions:
+        # TODO: What should this condition be?!?!?!
+        while self.wait_for_directions:
             try:
-                next_action = self.next_action()
-                if next_action != self.idling.idle:
+                if self.responsibilities == self.notions:
+                    next_action = self.idling.idle
+                else:
+                    next_action = self.next_action()
+
+                if next_action.__code__ != self.idling.idle.__code__:
                     duration = \
                         self.current_responsibility.calculate_effect()['duration']
-                    task_function = default_cost(next_action, duration)
+                    next_action = default_cost(next_action, duration)
+
 
                 # TODO: Do we actually need to provide a workflow class here?
-                task = Task(None, task_function)
+                task = Task(None, next_action)
 
                 self._task_history.append(task)
                 self.current_task = task

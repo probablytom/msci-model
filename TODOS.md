@@ -8,3 +8,5 @@
   account for urgency against importance
 * When choosing a responsibility, be smarter than just taking the mean of
   its importances
+* ASK TIM: what is the condition on the while loop for?!?!?! How should I be
+  writing it?

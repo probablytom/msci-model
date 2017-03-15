@@ -8,8 +8,8 @@ class TestCourseworkModel(unittest.TestCase):
     def setUp(self):
         # TODO: What's the model duration?
         self.global_clock = SynchronizingClock(max_ticks=100)
-        self.lecturer_count = 5
-        self.student_count = 20
+        self.lecturer_count = 3
+        self.student_count = 7
         self.semester_size = 3  # classes per student
 
         # Create a bunch of self.lecturers and self.students.
