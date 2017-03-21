@@ -10,3 +10,5 @@
   its importances
 * ASK TIM: what is the condition on the while loop for?!?!?! How should I be
   writing it?
+* Fix calculation in accept_responsibility
+* Write interpret function for ResponsibleAgent

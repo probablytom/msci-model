@@ -3,7 +3,7 @@ from theatre_ag.workflow import Idling as TheatreIdling
 from theatre_ag import default_cost
 from theatre_ag.task import Task
 from theatre_ag.actor import OutOfTurnsException
-from .Responsibilities import Responsibility
+from .Responsibilities import Responsibility, ImportanceScoreSet, Obligation
 from abc import ABCMeta, abstractmethod
 from .utility_functions import mean, flatten, sign
 from random import random, choice
@@ -43,12 +43,18 @@ class ResponsibleAgent(TheatreActor):
         self.acts_effect_signs = {}
         for act, effect in self.acts.items():
             self.acts_effect_signs[act] = dict(zip(effect.keys(),
-                                           [sign(value)
-                                           for value in effect.values()]
-                                           ))
+                                                   [sign(value)
+                                                    for value in effect.values()]
+                                                   ))
 
-    def allocate_responsibility(self, resp):
-        accepted = resp.delegee.allocate_responsibility(resp)
+    # TODO: This is deeply broken...
+    def delegate_responsibility(self,
+                                resp: Obligation,
+                                importances: list,
+                                delegee):  # Make this a ResponsibleAgent
+        importance_score_set = ImportanceScoreSet(resp, importances)
+        resp = Responsibility(importance_score_set, self, delegee)
+        accepted = resp.delegee.accept_responsibility(resp)
         if not accepted:
             raise NotImplementedException("What happens if a responsibility \
                                           isn't allocated?")
@@ -57,9 +63,9 @@ class ResponsibleAgent(TheatreActor):
         return resp
 
     def accept_responsibility(self, resp: Responsibility):
-        resp = self.interpret(resp)
+        #resp = self.interpret(resp)
         # TODO: fix this calculation
-        accepted = mean(resp.importance_score_set.values()) > 0.5
+        accepted = mean(resp.importance_score_set.importances) > 0.5
         if accepted:
             self.responsibilities.append(resp)
         return accepted
@@ -165,7 +171,7 @@ class ResponsibleAgent(TheatreActor):
 
 
                 # TODO: Do we actually need to provide a workflow class here?
-                task = Task(None, next_action)
+                task = Task(DummyWorkflow, next_action)
 
                 self._task_history.append(task)
                 self.current_task = task
@@ -289,3 +295,6 @@ class Student(ResponsibleAgent):
 class Idling(TheatreIdling):
     # TODO: make this default to
     pass
+
+class DummyWorkflow:
+    is_workflow = True

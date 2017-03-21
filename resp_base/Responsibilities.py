@@ -6,7 +6,7 @@ from random import random, choice
 
 
 class Obligation:
-    def __init__(self, constraint_set):
+    def __init__(self, constraint_set: list):
         self.constraint_set = constraint_set
 
 
@@ -14,7 +14,9 @@ class Obligation:
 # becase we allocate new importances to constraints every time we assign an
 # obligation.
 class ImportanceScoreSet:
-    def __init__(self, obligation, importances):
+    def __init__(self,
+                 obligation: Obligation,
+                 importances: list):
         constraints = obligation.constraint_set
         if len(constraints) != len(importances):
             class MissingImportanceInformationException(Exception): pass

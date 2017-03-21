@@ -1,6 +1,7 @@
 from resp_base import Student, Lecturer, Obligation, Deadline, ResourceDelta
 from theatre_ag import SynchronizingClock
 import unittest
+from copy import copy
 
 
 class TestCourseworkModel(unittest.TestCase):
@@ -59,6 +60,29 @@ class TestCourseworkModel(unittest.TestCase):
                                         write_code_constraint])
 
         # Now we need to make something happen here.
+        for i in range(len(self.classes)):
+            lecturer = self.lecturers[i]
+            for student in self.classes[i]:
+                obligation = [essay_writing, programming_assignment][i%2]
+                lecturer.delegate_responsibility(obligation,
+                                                    [0.75
+                                                    for item in obligation.constraint_set],
+                                                    student)
+
+        # Move five ticks forward
+        [self.global_clock.tick() for i in range(5)]
+
+        # Set alternative assignments
+        '''
+        for i in range(len(self.classes)):
+            lecturer = self.lecturers[i]
+            for student in self.classes[i]:
+                obligation = [essay_writing, programming_assignment][(i+1)%2]
+                lecturer.delegate_responsibility(obligation,
+                                                    [0.75
+                                                    for item in obligation.constraint_set],
+                                                    student)
+        '''
 
 
     def tearDown(self):
