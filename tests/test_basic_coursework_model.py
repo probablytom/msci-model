@@ -2,6 +2,7 @@ from resp_base import Student, Lecturer, Obligation, Deadline, ResourceDelta
 from theatre_ag import SynchronizingClock
 import unittest
 from copy import copy
+from time import sleep
 
 
 class TestCourseworkModel(unittest.TestCase):
@@ -70,10 +71,18 @@ class TestCourseworkModel(unittest.TestCase):
                                                     student)
 
         # Move five ticks forward
+        # This method eats memory like a crazy thing.
         [self.global_clock.tick() for i in range(5)]
 
-        # Set alternative assignments
+        # This method also produces gnarly memory issues
         '''
+        self.global_clock.max_ticks = 5
+        self.global_clock.tick_toc()
+        self.global_clock.max_ticks = 20
+        '''
+
+
+        # Set alternative assignments
         for i in range(len(self.classes)):
             lecturer = self.lecturers[i]
             for student in self.classes[i]:
@@ -82,7 +91,6 @@ class TestCourseworkModel(unittest.TestCase):
                                                     [0.75
                                                     for item in obligation.constraint_set],
                                                     student)
-        '''
 
 
     def tearDown(self):
