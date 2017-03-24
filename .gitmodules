@@ -1,0 +1,3 @@
+[submodule "theatre_ag"]
+	path = theatre_ag
+	url = https://github.com/twsswt/theatre_ag.git
