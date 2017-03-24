@@ -1,5 +1,5 @@
 from abc import ABCMeta
-from theatre_ag import SynchronizingClock
+from theatre_ag.theatre_ag import SynchronizingClock
 
 
 class AbstractConstraint:

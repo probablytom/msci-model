@@ -1,8 +1,9 @@
-from theatre_ag import Actor as TheatreActor
-from theatre_ag.workflow import Idling as TheatreIdling
-from theatre_ag import default_cost
-from theatre_ag.task import Task
-from theatre_ag.actor import OutOfTurnsException
+from theatre_ag.theatre_ag import Actor as TheatreActor
+from theatre_ag.theatre_ag.workflow import Idling as TheatreIdling
+from theatre_ag.theatre_ag.workflow import treat_as_workflow, allocate_workflow_to
+from theatre_ag.theatre_ag import default_cost
+from theatre_ag.theatre_ag.task import Task
+from theatre_ag.theatre_ag.actor import OutOfTurnsException
 from .Responsibilities import Responsibility, ImportanceScoreSet, Obligation
 from abc import ABCMeta, abstractmethod
 from .utility_functions import mean, flatten, sign
@@ -161,21 +162,31 @@ class ResponsibleAgent(TheatreActor):
             try:
                 if self.responsibilities == self.notions:
                     next_action = self.idling.idle
+                    workflow = self.idling
                 else:
                     next_action = self.next_action()
+                    workflow = DummyWorkflow()
 
-                if next_action.__code__ != self.idling.idle.__code__:
+                    treat_as_workflow(DummyWorkflow)
+
                     duration = \
                         self.current_responsibility.calculate_effect()['duration']
                     next_action = default_cost(next_action, duration)
 
 
                 # TODO: Do we actually need to provide a workflow class here?
-                task = Task(DummyWorkflow, next_action)
+                task = Task(workflow, next_action)
+                self.current_task = task
+                entry_point_name = task.entry_point.func_name
+                allocate_workflow_to(self, task.workflow)
+                task.entry_point = task.workflow.__getattribute__(entry_point_name)
 
                 self._task_history.append(task)
                 self.current_task = task
-                task.entry_point(*task.args)
+                result = task.entry_point(*task.args)
+                if result is not None:
+                    # TODO: Add result to consequential responsibilities
+                    pass
 
             except OutOfTurnsException:
                 break
@@ -195,24 +206,6 @@ class Lecturer(ResponsibleAgent):
         # There must be an attribute for every resource which can be effected as
         # the result of a Constraints.ResourceDelta being discharged.
         self.essays_written = 0
-
-    # TODO: Do lecturers need to do this, given they don't discharge?
-    #     (An action of theirs might be delegation?)
-    def choose_action(self, responsibility):
-        pass
-
-    # TODO: Modify this for judging student responsibility?
-    # def judge_degree_responsible(self, other_agent):
-
-    # TODO: Decide whether to implement, given a lecturer doesn't discharge
-    # responsibility.
-    def allocate_responsibility(self, resp):
-        pass
-
-    # TODO: Decide whether to implement, given a lecturer doesn't discharge
-    # responsibility.
-    def interpret(self, resp):
-        pass
 
     # Lecturers can write essays
     # (We're calling papers essays, so as to simplify the model's ontology.)
@@ -252,18 +245,6 @@ class Student(ResponsibleAgent):
         # There must be an attribute for every resource which can be effected as
         # the result of a Constraints.ResourceDelta being discharged.
         self.essays_written = 0
-
-    # TODO: How do students decide what they'll do next?
-    def choose_action(self, responsibility):
-        pass
-
-    # TODO:
-    def allocate_responsibility(self, resp):
-        pass
-
-    # TODO:
-    def interpret(self, resp):
-        pass
 
     # Students can write essays
     # RETURNS: tuple (a,b):
