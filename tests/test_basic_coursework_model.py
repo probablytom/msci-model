@@ -42,8 +42,11 @@ class TestCourseworkModel(unittest.TestCase):
     def test_model_basic(self):
         # TODO: What's the best way to encode the constraint text?
         essay_deadline = Deadline(10, self.global_clock)
+        print(1)
         programming_deadline = Deadline(10, self.global_clock)
+        print(2)
         write_essay_constraint = ResourceDelta({'essays_written': 1})
+        print(3)
         write_code_constraint = ResourceDelta({'working_programs': 1})
 
         # Extracurricular activity durations:
@@ -51,6 +54,7 @@ class TestCourseworkModel(unittest.TestCase):
         research_programming_duration = Deadline(30, self.global_clock)
 
         # Obligations that responsibilities can be made from
+        print(4)
         essay_writing = Obligation([essay_deadline,
                                     write_essay_constraint])
         programming_assignment = Obligation([programming_deadline,
@@ -60,8 +64,10 @@ class TestCourseworkModel(unittest.TestCase):
         extra_programming = Obligation([research_programming_duration,
                                         write_code_constraint])
 
+        print(5)
         # Now we need to make something happen here.
         for i in range(len(self.classes)):
+            print('i: ' + str(i))
             lecturer = self.lecturers[i]
             for student in self.classes[i]:
                 obligation = [essay_writing, programming_assignment][i%2]
@@ -71,7 +77,10 @@ class TestCourseworkModel(unittest.TestCase):
                                                     student)
 
         # Move five ticks forward
-        [self.global_clock.tick() for i in range(5)]
+        for i in range(5):
+            print('trying to tick...')
+            self.global_clock.tick()
+            print('just ticked...')
 
         # Set alternative assignments
         for i in range(len(self.classes)):

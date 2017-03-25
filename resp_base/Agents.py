@@ -9,6 +9,7 @@ from abc import ABCMeta, abstractmethod
 from .utility_functions import mean, flatten, sign
 from random import random, choice
 from copy import copy
+from time import sleep
 
 
 class NotImplementedException(Exception):
@@ -23,8 +24,8 @@ class ResponsibleAgent(TheatreActor):
 
     def __init__(self, notions, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.responsibilities = notions  # Default beliefs about the world
-        self.notions = notions
+        self.responsibilities = copy(notions)  # Default beliefs about the world
+        self.notions = copy(notions)
         self.consequential_responsibilities = []  # All discharged constraints
 
         # To be updated with the responsibility the current action represents
@@ -69,6 +70,8 @@ class ResponsibleAgent(TheatreActor):
         accepted = mean(resp.importance_score_set.importances) > 0.5
         if accepted:
             self.responsibilities.append(resp)
+            print('')
+        print(accepted)
         return accepted
 
     def judge_degree_responsible(self, other_agent):
@@ -94,13 +97,15 @@ class ResponsibleAgent(TheatreActor):
         # Return the dictionary of degrees of responsibility by type
         return degree_responsible
 
-    # RETURNS: a function which returns a tuple (a,b):
-    #     a: the success or failure of the discharge
-    #     b: the set of constraint satisfactions (the consequential
-    #       responsibility)
-    # Will choose the first action which seems to move resources in the intended
-    # direction.
     def choose_action(self, responsibility):
+        '''
+        RETURNS: a function which returns a tuple (a,b):
+            a: the success or failure of the discharge
+            b: the set of constraint satisfactions (the consequential
+            responsibility)
+        Will choose the first action which seems to move resources in the intended
+        direction.
+        '''
         intended_effect = responsibility.calculate_effect()
         effect_signs = dict(zip(intended_effect.keys(),
                             [sign(value)
@@ -109,17 +114,17 @@ class ResponsibleAgent(TheatreActor):
         for act, act_effect_signs in self.acts_effect_signs.items():
             if effect_signs == act_effect_signs:
                 return act
-        raise NotImplementedException("If no action can successfully \
-                                      discharge the responsibility, what do \
-                                      we do?")
+        return self.idling.idle
 
-    # Choose a responsibility with the highest average importance across various
-    # factors.
-    # TODO: make this smarter! Just taking the mean doesn't take into account
-    #     the nature of the importances.
-    # TODO: Consider deadlines! Implement an eisenhower matrix, to weigh
-    #     importance against urgency?
     def choose_responsibility(self):
+        '''
+        Choose a responsibility with the highest average importance across various
+        factors.
+        TODO: make this smarter! Just taking the mean doesn't take into account
+            the nature of the importances.
+        TODO: Consider deadlines! Implement an eisenhower matrix, to weigh
+            importance against urgency?
+        '''
         resps = copy(self.responsibilities)
         resps = [resp for resp in resps if resp not in self.notions]
         resp = max(resps,
@@ -146,47 +151,60 @@ class ResponsibleAgent(TheatreActor):
                 len(self.responsibilities) - len(self.notions) > 0
         if anything_to_discharge:
             resp_chosen = self.choose_responsibility()
+            self.current_responsibility = resp_chosen
             discharge_function = self.choose_action(resp_chosen)
         else:
             discharge_function = self.idling.idle
         return discharge_function
 
-    @abstractmethod
-    def register_acts(self):
-        pass
-
-    # TODO: Add responsibilities to the task queue?
     def perform(self):
-        # TODO: What should this condition be?!?!?!
+        '''
+        Allows an agent to act on each tick.
+        TODO: Add responsibilities to the task queue?
+        '''
         while self.wait_for_directions:
             try:
+                currently_idling = False
                 if self.responsibilities == self.notions:
                     next_action = self.idling.idle
                     workflow = self.idling
+                    task = Task(workflow, next_action)
+                    currently_idling = True
                 else:
+                    print('discharging a responsibility')
                     next_action = self.next_action()
+                    print(next_action.__name__)
+                    exec('DummyWorkflow.'+next_action.__name__+' = next_action')
                     workflow = DummyWorkflow()
+                    task = Task(workflow, next_action)
+                    entry_point_name = task.entry_point.__name__
+                    allocate_workflow_to(self, task.workflow)
+                    task.entry_point = task.workflow.__getattribute__(entry_point_name)
 
                     treat_as_workflow(DummyWorkflow)
 
                     duration = \
                         self.current_responsibility.calculate_effect()['duration']
-                    next_action = default_cost(next_action, duration)
+                    next_action = default_cost(duration)(next_action)
 
-
-                # TODO: Do we actually need to provide a workflow class here?
-                task = Task(workflow, next_action)
                 self.current_task = task
-                entry_point_name = task.entry_point.func_name
-                allocate_workflow_to(self, task.workflow)
-                task.entry_point = task.workflow.__getattribute__(entry_point_name)
 
                 self._task_history.append(task)
                 self.current_task = task
                 result = task.entry_point(*task.args)
                 if result is not None:
-                    # TODO: Add result to consequential responsibilities
-                    pass
+                    discharged_successfully, constraint_satisfactions = result
+                    self.consequential_responsibilities.append(constraint_satisfactions)
+                    if discharged_successfully:
+                        self.responsibilities.remove(self.current_responsibility)
+                        self.current_responsibility = None
+
+                    # Choose a next action; this one's finished!
+                    self.wait_for_directions = True
+                elif currently_idling:
+                    self.wait_for_directions = True
+                else:
+                    self.wait_for_directions = False
 
             except OutOfTurnsException:
                 break
@@ -194,6 +212,10 @@ class ResponsibleAgent(TheatreActor):
         # Ensure that clock can proceed for other listeners.
         self.clock.remove_tick_listener(self)
         self.waiting_for_tick.set()
+
+    @abstractmethod
+    def register_acts(self):
+        pass
 
 
 # TODO: Update with any lecturer-specific actions.
@@ -231,8 +253,26 @@ class Lecturer(ResponsibleAgent):
                 failed_responsibility].record_outcome(False)
         return (written_successfully, resp.obligation.constraint_set)
 
+    def write_program(self, resp):
+        written_successfully = (random() > 0.1)
+        if written_successfully:
+            self.working_programs += 1
+            # Essay writing responsibilities have deadlines and essay details
+            for i in range(len(resp.obligation.constraint_set)):
+                resp.obligation.constraint_set[i].record_outcome(True)
+        else:
+            # Fail to write an essay one in ten times
+            for i in range(len(resp.obligation.constraint_set)):
+                resp.obligation.constraint_set[i].record_outcome(True)
+            # One constraint will have failed.
+            failed_responsibility = choice(
+                range(len(resp.obligation.constraint_set)))
+            resp.obligation.constraint_set[
+                failed_responsibility].record_outcome(False)
+
     def register_acts(self):
         self.acts[self.write_essay] = {'essays_written': 1}
+        self.acts[self.write_program] = {'working_programs': 1}
 
 
 # TODO: Update with any student-specific actions.
@@ -269,8 +309,26 @@ class Student(ResponsibleAgent):
                 failed_responsibility].record_outcome(False)
         return (written_successfully, resp.obligation.constraint_set)
 
+    def write_program(self, resp):
+        written_successfully = (random() > 0.1)
+        if written_successfully:
+            self.working_programs += 1
+            # Essay writing responsibilities have deadlines and essay details
+            for i in range(len(resp.obligation.constraint_set)):
+                resp.obligation.constraint_set[i].record_outcome(True)
+        else:
+            # Fail to write an essay one in ten times
+            for i in range(len(resp.obligation.constraint_set)):
+                resp.obligation.constraint_set[i].record_outcome(True)
+            # One constraint will have failed.
+            failed_responsibility = choice(
+                range(len(resp.obligation.constraint_set)))
+            resp.obligation.constraint_set[
+                failed_responsibility].record_outcome(False)
+
     def register_acts(self):
         self.acts[self.write_essay] = {'essays_written': 1}
+        self.acts[self.write_program] = {'working_programs': 1}
 
 
 class Idling(TheatreIdling):
@@ -279,3 +337,5 @@ class Idling(TheatreIdling):
 
 class DummyWorkflow:
     is_workflow = True
+
+treat_as_workflow(DummyWorkflow)
