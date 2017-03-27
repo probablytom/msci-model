@@ -101,13 +101,14 @@ class ResponsibleAgent(TheatreActor):
         direction.
         '''
         intended_effect = responsibility.calculate_effect()
+        intended_effect.pop('duration')
         effect_signs = dict(zip(intended_effect.keys(),
                             [sign(value)
                              for value in intended_effect.values()]
                             ))
         for act, act_effect_signs in self.acts_effect_signs.items():
             if effect_signs == act_effect_signs:
-                return act
+                return act.__func__
         return self.idling.idle
 
     def choose_responsibility(self):
@@ -125,21 +126,6 @@ class ResponsibleAgent(TheatreActor):
                    key=lambda x: mean(x.importance_score_set.importances))
         return resp
 
-    # Selects a responsibility to discharge, attempts to discharge it, and
-    # modifies the list of responsibilities accordingly.
-    def discharge(self):
-        anything_to_discharge = len(self.responsibilities) > 0
-        if anything_to_discharge:
-            resp_chosen = self.choose_responsibility()
-            self.current_responsibility = resp_chosen
-            discharge_function = self.choose_action(resp_chosen)
-            discharged_successfully, constraint_satisfactions = \
-                discharge_function()
-            self.consequential_responsibilities.append(constraint_satisfactions)
-            if discharged_successfully:
-                self.responsibilities.remove(resp_chosen)
-        return anything_to_discharge
-
     def next_action(self):
         anything_to_discharge =\
                 len(self.responsibilities) - len(self.notions) > 0
@@ -152,24 +138,28 @@ class ResponsibleAgent(TheatreActor):
         return discharge_function
 
     def get_next_task(self):
-        if self.responsibilities == self.notions:
-            return Task(self.idling, self.idling.idle)
-        else:
             # Get the next action
             next_action = self.next_action()
 
-            # Add its duration
-            duration = \
-                self.current_responsibility.calculate_effect()['duration']
-            next_action = default_cost(duration)(next_action)
+            # Depending on whether the next action is to idle or is a free
+            # action, act accordingly.
+            if next_action.__code__ == self.idling.idle.__code__:
+                workflow = self.idling
+            else:
+                # Add its duration
+                duration = \
+                    self.current_responsibility.calculate_effect()['duration']
+                next_action = default_cost(duration)(next_action)
 
-            # Add that action to the workflow
-            exec('DummyWorkflow.'+next_action.__name__+' = next_action')
-            workflow = DummyWorkflow()
+                # Add that action to the workflow
+                exec('DummyWorkflow.'+next_action.__name__+' = next_action')
+                workflow = DummyWorkflow()
 
             # Create and return the relevant task
+            workflow.sync_wrap = next_action
+            workflow = self.__class__
             task = Task(workflow, next_action)
-            # allocate_workflow_to(self, task.workflow)
+            print(next_action)
             return task
 
     def handle_return_value(self, return_value):
@@ -189,6 +179,8 @@ class ResponsibleAgent(TheatreActor):
 # Lecturers exhibit primarily delegating behaviour!
 class Lecturer(ResponsibleAgent):
 
+    is_workflow = True
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -201,40 +193,39 @@ class Lecturer(ResponsibleAgent):
     # RETURNS: tuple (a,b):
     #     a: success bool
     #     b: set of constraints with pass/failure
-    # TODO: Better done with fuzzimoss?
-    def write_essay(self, resp):
+    def write_essay(self):
         written_successfully = (random() > 0.1)
         if written_successfully:
             self.essays_written += 1
             # Essay writing responsibilities have deadlines and essay details
-            for i in range(len(resp.obligation.constraint_set)):
-                resp.obligation.constraint_set[i].record_outcome(True)
+            for i in range(len(self.current_responsibility.obligation.constraint_set)):
+                self.current_responsibility.obligation.constraint_set[i].record_outcome(True)
         else:
             # Fail to write an essay one in ten times
-            for i in range(len(resp.obligation.constraint_set)):
-                resp.obligation.constraint_set[i].record_outcome(True)
+            for i in range(len(self.current_responsibility.obligation.constraint_set)):
+                self.current_responsibility.obligation.constraint_set[i].record_outcome(True)
             # One constraint will have failed.
             failed_responsibility = choice(
-                range(len(resp.obligation.constraint_set)))
-            resp.obligation.constraint_set[
+                range(len(self.current_responsibility.obligation.constraint_set)))
+            self.current_responsibility.obligation.constraint_set[
                 failed_responsibility].record_outcome(False)
-        return (written_successfully, resp.obligation.constraint_set)
+        return (written_successfully, self.current_responsibility.obligation.constraint_set)
 
-    def write_program(self, resp):
+    def write_program(self):
         written_successfully = (random() > 0.1)
         if written_successfully:
             self.working_programs += 1
             # Essay writing responsibilities have deadlines and essay details
-            for i in range(len(resp.obligation.constraint_set)):
-                resp.obligation.constraint_set[i].record_outcome(True)
+            for i in range(len(self.current_responsibility.obligation.constraint_set)):
+                self.current_responsibility.obligation.constraint_set[i].record_outcome(True)
         else:
             # Fail to write an essay one in ten times
-            for i in range(len(resp.obligation.constraint_set)):
-                resp.obligation.constraint_set[i].record_outcome(True)
+            for i in range(len(self.current_responsibility.obligation.constraint_set)):
+                self.current_responsibility.obligation.constraint_set[i].record_outcome(True)
             # One constraint will have failed.
             failed_responsibility = choice(
-                range(len(resp.obligation.constraint_set)))
-            resp.obligation.constraint_set[
+                range(len(self.current_responsibility.obligation.constraint_set)))
+            self.current_responsibility.obligation.constraint_set[
                 failed_responsibility].record_outcome(False)
 
     def register_acts(self):
@@ -245,6 +236,8 @@ class Lecturer(ResponsibleAgent):
 # TODO: Update with any student-specific actions.
 # Students exhibit primarily discharging behaviour!
 class Student(ResponsibleAgent):
+
+    is_workflow = True
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -257,50 +250,45 @@ class Student(ResponsibleAgent):
     # RETURNS: tuple (a,b):
     #     a: success bool
     #     b: set of constraints with pass/failure
-    # TODO: Better done with fuzzimoss?
-    def write_essay(self, resp):
+    def write_essay(self):
         written_successfully = (random() > 0.1)
         if written_successfully:
             self.essays_written += 1
             # Essay writing responsibilities have deadlines and essay details
-            for i in range(len(resp.obligation.constraint_set)):
-                resp.obligation.constraint_set[i].record_outcome(True)
+            for i in range(len(self.current_responsibility.obligation.constraint_set)):
+                self.current_responsibility.obligation.constraint_set[i].record_outcome(True)
         else:
             # Fail to write an essay one in ten times
-            for i in range(len(resp.obligation.constraint_set)):
-                resp.obligation.constraint_set[i].record_outcome(True)
+            for i in range(len(self.current_responsibility.obligation.constraint_set)):
+                self.current_responsibility.obligation.constraint_set[i].record_outcome(True)
             # One constraint will have failed.
             failed_responsibility = choice(
-                range(len(resp.obligation.constraint_set)))
-            resp.obligation.constraint_set[
+                range(len(self.current_responsibility.obligation.constraint_set)))
+            self.current_responsibility.obligation.constraint_set[
                 failed_responsibility].record_outcome(False)
-        return (written_successfully, resp.obligation.constraint_set)
+        return (written_successfully, self.current_responsibility.obligation.constraint_set)
 
-    def write_program(self, resp):
+    def write_program(self):
         written_successfully = (random() > 0.1)
         if written_successfully:
             self.working_programs += 1
             # Essay writing responsibilities have deadlines and essay details
-            for i in range(len(resp.obligation.constraint_set)):
-                resp.obligation.constraint_set[i].record_outcome(True)
+            for i in range(len(self.current_responsibility.obligation.constraint_set)):
+                self.current_responsibility.obligation.constraint_set[i].record_outcome(True)
         else:
             # Fail to write an essay one in ten times
-            for i in range(len(resp.obligation.constraint_set)):
-                resp.obligation.constraint_set[i].record_outcome(True)
+            for i in range(len(self.current_responsibility.obligation.constraint_set)):
+                self.current_responsibility.obligation.constraint_set[i].record_outcome(True)
             # One constraint will have failed.
             failed_responsibility = choice(
-                range(len(resp.obligation.constraint_set)))
-            resp.obligation.constraint_set[
+                range(len(self.current_responsibility.obligation.constraint_set)))
+            self.current_responsibility.obligation.constraint_set[
                 failed_responsibility].record_outcome(False)
+
 
     def register_acts(self):
         self.acts[self.write_essay] = {'essays_written': 1}
         self.acts[self.write_program] = {'working_programs': 1}
-
-
-class Idling(TheatreIdling):
-    # TODO: make this default to
-    pass
 
 class DummyWorkflow:
     is_workflow = True
