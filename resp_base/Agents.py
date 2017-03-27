@@ -31,16 +31,6 @@ class ResponsibleAgent(TheatreActor):
         # To be updated with the responsibility the current action represents
         self.current_responsibility = None
 
-        # A responsible agent, when it has nothing to do, will pick another task
-        # should it have one available. Otherwise, it will idle.
-        self.idling = Idling()
-        next_action = self.idling.idle
-        workflow = self.idling
-        treat_as_workflow(self.idling.__class__)
-        exec(self.idling.__class__.__name__+'.'+next_action.__name__+' = next_action')
-        task = Task(workflow, next_action)
-        self.current_task = task
-
         # An act is a bound method. self.acts is a dictionary of the form:
         #   {act: effect}
         # ..where the effect is a dictionary of expected resource changes.
@@ -179,7 +169,7 @@ class ResponsibleAgent(TheatreActor):
 
             # Create and return the relevant task
             task = Task(workflow, next_action)
-            allocate_workflow_to(self, task.workflow)
+            # allocate_workflow_to(self, task.workflow)
             return task
 
     def handle_return_value(self, return_value):
@@ -189,57 +179,6 @@ class ResponsibleAgent(TheatreActor):
             if discharged_successfully:
                 self.responsibilities.remove(self.current_responsibility)
                 self.current_responsibility = None
-
-    #def perform(self):
-        '''
-        Allows an agent to act on each tick.
-        TODO: Add responsibilities to the task queue?
-        '''
-        '''
-        while self.wait_for_directions:
-            try:
-                # If there's no responsibility to discharge, idle.
-                if self.responsibilities == self.notions:
-                    next_action = self.idling.idle
-                    workflow = self.idling
-                    treat_as_workflow(self.idling.__class__)
-                    exec(self.idling.__class__.__name__+'.'+next_action.__name__+' = next_action')
-                    task = Task(workflow, next_action)
-                # there's a responsibility to discharge, so choose one and add
-                # it to a workflow.
-                else:
-                    next_action = self.next_action()
-                    exec('DummyWorkflow.'+next_action.__name__+' = next_action')
-                    workflow = DummyWorkflow()
-                    task = Task(workflow, next_action)
-
-                    treat_as_workflow(DummyWorkflow)
-
-                    duration = \
-                        self.current_responsibility.calculate_effect()['duration']
-                    next_action = default_cost(duration)(next_action)
-
-                self._task_history.append(task)
-                self.current_task = task
-
-                entry_point_name = task.entry_point.__name__
-                allocate_workflow_to(self, workflow)
-                task.entry_point = task.workflow.__getattribute__(entry_point_name)
-                result = task.entry_point(*task.args)
-                if result is not None:
-                    discharged_successfully, constraint_satisfactions = result
-                    self.consequential_responsibilities.append(constraint_satisfactions)
-                    if discharged_successfully:
-                        self.responsibilities.remove(self.current_responsibility)
-                        self.current_responsibility = None
-
-            except OutOfTurnsException:
-                break
-
-        # Ensure that clock can proceed for other listeners.
-        self.clock.remove_tick_listener(self)
-        self.waiting_for_tick.set()
-        '''
 
     @abstractmethod
     def register_acts(self):
@@ -367,4 +306,3 @@ class DummyWorkflow:
     is_workflow = True
 
 treat_as_workflow(DummyWorkflow)
-treat_as_workflow(Idling)
