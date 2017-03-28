@@ -7,6 +7,7 @@ from .utility_functions import mean, flatten, sign
 from random import random, choice
 from copy import copy
 
+
 class ResponsibleAgentWorkflow(object):
 
     responsible = True  # This will be a toggle for deactivating the formalism
@@ -133,12 +134,11 @@ class ResponsibleAgentWorkflow(object):
 
         # Depending on whether the next action is to idle or is a free
         # action, act accordingly.
-        if next_action.func_name is not 'idle':
+        if next_action.__name__ is not 'idle':
             # Add its duration
             duration = \
                 self.current_responsibility.calculate_effect()['duration']
-            next_action = default_cost(duration)(next_action)
-
+            #next_action.reference_function.default_cost = 1
             workflow = self
 
         else:
@@ -162,6 +162,7 @@ class ResponsibleAgentWorkflow(object):
     # RETURNS: tuple (a,b):
     #     a: success bool
     #     b: set of constraints with pass/failure
+    @default_cost(1)
     def write_essay(self):
         written_successfully = (random() > 0.1)
         written_successfully = True
@@ -181,6 +182,7 @@ class ResponsibleAgentWorkflow(object):
                 failed_responsibility].record_outcome(False)
         return (written_successfully, self.current_responsibility.importance_score_set.constraints)
 
+    @default_cost(1)
     def write_program(self):
         written_successfully = (random() > 0.1)
         written_successfully = True

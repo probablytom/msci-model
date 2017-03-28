@@ -18,7 +18,11 @@ class ResponsibleAgent(TheatreActor):
         return self.workflow.handle_return_value(*args, **kwargs)
 
     def get_next_task(self, *args, **kwargs):
-        return self.workflow.get_next_task(*args, **kwargs)
+        result = self.workflow.get_next_task()
+        #if self.logical_name == 'student_0':
+        #    print (result)
+
+        return result
 
     def handle_return_value(self, *args, **kwargs):
         return self.workflow.handle_return_value(*args, **kwargs)
