@@ -1,8 +1,7 @@
 from resp_base import Student, Lecturer, Obligation, Deadline, ResourceDelta
+from resp_base import StudentWorkflow, LecturerWorkflow
 from theatre_ag.theatre_ag import SynchronizingClock
 import unittest
-from copy import copy
-from time import sleep
 
 
 class TestCourseworkModel(unittest.TestCase):
@@ -19,7 +18,7 @@ class TestCourseworkModel(unittest.TestCase):
 
         self.students = []
         for i in range(self.student_count):
-            curr_student = Student([], "student_"+str(i), self.global_clock)
+            curr_student = Student(StudentWorkflow([]), "student_"+str(i), self.global_clock)
             curr_student.start()
             self.students.append(curr_student)
 
@@ -27,7 +26,7 @@ class TestCourseworkModel(unittest.TestCase):
 
         self.lecturers = []
         for i in range(self.lecturer_count):
-            curr_lecturer = Lecturer([], "lecturer_"+str(i), self.global_clock)
+            curr_lecturer = Lecturer(LecturerWorkflow([]), "lecturer_"+str(i), self.global_clock)
             curr_lecturer.start()
             self.lecturers.append(curr_lecturer)
 
@@ -87,7 +86,8 @@ class TestCourseworkModel(unittest.TestCase):
         [self.global_clock.tick() for i in range(10)]
 
         for student in self.students:
-            print(student.essays_written)
+            self.assertTrue(student.essays_written == 1)
+
 
 
     def tearDown(self):
