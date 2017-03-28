@@ -8,9 +8,13 @@ class AbstractConstraint:
 
     def __init__(self, factors: dict):
         self.factors = factors
+        self.outcome = None
 
     def assign_importance(self, importance):
         self.importance = importance
+
+    def record_outcome(self, outcome):
+        self.outcome = outcome
 
 
 class Deadline(AbstractConstraint):

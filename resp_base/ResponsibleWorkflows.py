@@ -7,7 +7,7 @@ from .utility_functions import mean, flatten, sign
 from random import random, choice
 from copy import copy
 
-class ResponsibleAgentWorkflow:
+class ResponsibleAgentWorkflow(object):
 
     responsible = True  # This will be a toggle for deactivating the formalism
 
@@ -112,15 +112,15 @@ class ResponsibleAgentWorkflow:
         '''
         resps = copy(self.responsibilities)
         resps = [resp for resp in resps if resp not in self.notions]
-        resp = max(resps,
-                   key=lambda x: mean(x.importance_score_set.importances))
-        return resp
+        if resps == []:
+            return None
+        else:
+            return max(resps,
+                       key=lambda x: mean(x.importance_score_set.importances))
 
     def next_action(self):
-        anything_to_discharge = \
-            len(self.responsibilities) - len(self.notions) > 0
-        if anything_to_discharge:
-            resp_chosen = self.choose_responsibility()
+        resp_chosen = self.choose_responsibility()
+        if resp_chosen is not None:
             self.current_responsibility = resp_chosen
             discharge_function = self.choose_action(resp_chosen)
         else:
@@ -133,16 +133,20 @@ class ResponsibleAgentWorkflow:
 
         # Depending on whether the next action is to idle or is a free
         # action, act accordingly.
-        if not next_action.__code__ == self.agent.idling.idle.__code__:
+        if next_action.func_name is not 'idle':
             # Add its duration
             duration = \
                 self.current_responsibility.calculate_effect()['duration']
             next_action = default_cost(duration)(next_action)
 
+            workflow = self
+
+        else:
+            # We're idling
+            workflow = self.agent.idling
+
         # Create and return the relevant task
-        workflow = self.__class__
         task = Task(workflow, next_action)
-        task.args = [self]
         return task
 
     def handle_return_value(self, return_value):
@@ -164,18 +168,18 @@ class ResponsibleAgentWorkflow:
         if written_successfully:
             self.essays_written += 1
             # Essay writing responsibilities have deadlines and essay details
-            for i in range(len(self.current_responsibility.obligation.constraint_set)):
-                self.current_responsibility.obligation.constraint_set[i].record_outcome(True)
+            for i in range(len(self.current_responsibility.importance_score_set.constraints)):
+                self.current_responsibility.importance_score_set.constraints[i].record_outcome(True)
         else:
             # Fail to write an essay one in ten times
-            for i in range(len(self.current_responsibility.obligation.constraint_set)):
-                self.current_responsibility.obligation.constraint_set[i].record_outcome(True)
+            for i in range(len(self.current_responsibility.importance_score_set.constraints)):
+                self.current_responsibility.importance_score_set.constraints[i].record_outcome(True)
             # One constraint will have failed.
             failed_responsibility = choice(
-                range(len(self.current_responsibility.obligation.constraint_set)))
-            self.current_responsibility.obligation.constraint_set[
+                range(len(self.current_responsibility.importance_score_set.constraints)))
+            self.current_responsibility.importance_score_set.constraints[
                 failed_responsibility].record_outcome(False)
-        return (written_successfully, self.current_responsibility.obligation.constraint_set)
+        return (written_successfully, self.current_responsibility.importance_score_set.constraints)
 
     def write_program(self):
         written_successfully = (random() > 0.1)
@@ -183,16 +187,16 @@ class ResponsibleAgentWorkflow:
         if written_successfully:
             self.working_programs += 1
             # Essay writing responsibilities have deadlines and essay details
-            for i in range(len(self.current_responsibility.obligation.constraint_set)):
-                self.current_responsibility.obligation.constraint_set[i].record_outcome(True)
+            for i in range(len(self.current_responsibility.importance_score_set.constraints)):
+                self.current_responsibility.importance_score_set.constraints[i].record_outcome(True)
         else:
             # Fail to write an essay one in ten times
-            for i in range(len(self.current_responsibility.obligation.constraint_set)):
-                self.current_responsibility.obligation.constraint_set[i].record_outcome(True)
+            for i in range(len(self.current_responsibility.importance_score_set.constraints)):
+                self.current_responsibility.importance_score_set.constraints[i].record_outcome(True)
             # One constraint will have failed.
             failed_responsibility = choice(
-                range(len(self.current_responsibility.obligation.constraint_set)))
-            self.current_responsibility.obligation.constraint_set[
+                range(len(self.current_responsibility.importance_score_set.constraints)))
+            self.current_responsibility.importance_score_set.constraints[
                 failed_responsibility].record_outcome(False)
 
 
