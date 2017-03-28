@@ -59,34 +59,39 @@ class TestCourseworkModel(unittest.TestCase):
         extra_programming = Obligation([research_programming_duration,
                                         write_code_constraint])
 
-        # Now we need to make something happen here.
-        for i in range(len(self.classes)):
-            lecturer = self.lecturers[i]
-            for student in self.classes[i]:
-                obligation = [essay_writing, programming_assignment][i%2]
-                lecturer.delegate_responsibility(obligation,
-                                                    [0.75
-                                                    for item in obligation.constraint_set],
-                                                    student)
+        with open('temp', 'a+') as temp:
+            print(1, file=temp)
+            # Now we need to make something happen here.
+            for i in range(len(self.classes)):
+                lecturer = self.lecturers[i]
+                for student in self.classes[i]:
+                    obligation = [essay_writing, programming_assignment][i%2]
+                    lecturer.delegate_responsibility(obligation,
+                                                        [0.75
+                                                        for item in obligation.constraint_set],
+                                                        student)
+            print(2, file=temp)
 
-        # Move five ticks forward
-        for i in range(5):
-            self.global_clock.tick()
+            # Move five ticks forward
+            for i in range(5):
+                print('i: ' + str(i), file=temp)
+                self.global_clock.tick()
 
-        # Set alternative assignments
-        for i in range(len(self.classes)):
-            lecturer = self.lecturers[i]
-            for student in self.classes[i]:
-                obligation = [essay_writing, programming_assignment][(i+1)%2]
-                lecturer.delegate_responsibility(obligation,
-                                                    [0.75
-                                                    for item in obligation.constraint_set],
-                                                    student)
+            # Set alternative assignments
+            for i in range(len(self.classes)):
+                lecturer = self.lecturers[i]
+                for student in self.classes[i]:
+                    obligation = [essay_writing, programming_assignment][(i+1)%2]
+                    lecturer.delegate_responsibility(obligation,
+                                                        [0.75
+                                                        for item in obligation.constraint_set],
+                                                        student)
 
-        [self.global_clock.tick() for i in range(10)]
+            print('ticking again', file=temp)
+            [self.global_clock.tick() for i in range(10)]
 
-        for student in self.students:
-            self.assertTrue(student.essays_written == 1)
+            for student in self.students:
+                self.assertTrue(student.essays_written == 1)
 
 
 
