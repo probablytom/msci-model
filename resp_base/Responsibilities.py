@@ -44,4 +44,21 @@ class Responsibility:
             elif isinstance(constraint, Deadline):
                 total_effect['duration'] += constraint.duration
 
-        return total_effect
+        return ResponsibilityEffect(total_effect)
+
+
+class ResponsibilityEffect:
+    def __init__(self, effect_dict):
+        self.effect_dict = effect_dict
+
+    def __eq__(self, other):
+        if type(self) != type(other):
+            return False
+        return self.effect_dict == other.effect_dict
+
+
+class Act:
+    def __init__(self, entry_point_function, workflow=None, args=()):
+        self.entry_point_function = entry_point_function
+        self.workflow = workflow
+        self.args = args

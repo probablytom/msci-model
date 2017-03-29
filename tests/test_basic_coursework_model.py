@@ -1,5 +1,7 @@
-from resp_base import Student, Lecturer, Obligation, Deadline, ResourceDelta
-from resp_base import StudentWorkflow, LecturerWorkflow
+from resp_base import Obligation, Deadline, ResourceDelta
+from resp_base import ResponsibilityEffect, Act
+from resp_base import CourseworkWorkflow
+from resp_base import ResponsibleAgent
 from theatre_ag.theatre_ag import SynchronizingClock
 import unittest
 
@@ -18,7 +20,19 @@ class TestCourseworkModel(unittest.TestCase):
 
         self.students = []
         for i in range(self.student_count):
-            curr_student = Student(StudentWorkflow([]), "student_"+str(i), self.global_clock)
+            student_workflow = CourseworkWorkflow()
+            curr_student = ResponsibleAgent([], "student_"+str(i), self.global_clock, [CourseworkWorkflow()])
+
+            # Create acts and effects to register with the student created here
+            writing_effect = ResponsibilityEffect({'essays_written': 1})
+            programming_effect = ResponsibilityEffect({'working_programs': 1})
+            writing_act = Act(student_workflow.write_essay, student_workflow)
+            programming_act = Act(student_workflow.write_program, student_workflow)
+
+            # Register the acts
+            curr_student.register_act(writing_effect, writing_act)
+            curr_student.register_act(programming_effect, programming_act)
+
             curr_student.start()
             self.students.append(curr_student)
 
@@ -26,7 +40,7 @@ class TestCourseworkModel(unittest.TestCase):
 
         self.lecturers = []
         for i in range(self.lecturer_count):
-            curr_lecturer = Lecturer(LecturerWorkflow([]), "lecturer_"+str(i), self.global_clock)
+            curr_lecturer = ResponsibleAgent([], "lecturer_"+str(i), self.global_clock, [])
             curr_lecturer.start()
             self.lecturers.append(curr_lecturer)
 
