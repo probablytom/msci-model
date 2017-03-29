@@ -6,8 +6,6 @@ class CourseworkWorkflow:
 
     def __init__(self):
         self.agent = None
-        self.socio_states = {'essays_written': 0,
-                             'working_programs': 0}
 
     def assign_agent(self, agent):
         self.agent = agent
@@ -21,7 +19,9 @@ class CourseworkWorkflow:
         written_successfully = (random() > 0.1)
         written_successfully = True
         if written_successfully:
-            self.socio_states['essays_written'] += 1
+            if 'essays_written' not in agent.socio_states.keys():
+                agent.socio_states['essays_written'] = 0
+            agent.socio_states['essays_written'] += 1
             # Essay writing responsibilities have deadlines and essay details
             for i in range(len(agent.current_responsibility.importance_score_set.constraints)):
                 agent.current_responsibility.importance_score_set.constraints[i].record_outcome(True)
@@ -40,7 +40,9 @@ class CourseworkWorkflow:
         written_successfully = (random() > 0.1)
         written_successfully = True
         if written_successfully:
-            self.socio_states['working_programs'] += 1
+            if 'working programs' not in agent.socio_states.keys():
+                agent.socio_states['working_programs'] = 0
+            agent.socio_states['working_programs'] += 1
             # Essay writing responsibilities have deadlines and essay details
             for i in range(len(agent.current_responsibility.importance_score_set.constraints)):
                 agent.current_responsibility.importance_score_set.constraints[i].record_outcome(True)
@@ -53,6 +55,7 @@ class CourseworkWorkflow:
                 range(len(agent.current_responsibility.importance_score_set.constraints)))
             agent.current_responsibility.importance_score_set.constraints[
                 failed_responsibility].record_outcome(False)
+        return (written_successfully, agent.current_responsibility.importance_score_set.constraints)
 
 
 class DummyWorkflow:

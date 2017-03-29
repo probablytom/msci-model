@@ -4,16 +4,15 @@ from resp_base import CourseworkWorkflow
 from resp_base import ResponsibleAgent
 from theatre_ag.theatre_ag import SynchronizingClock
 import unittest
-from time import sleep
 
 
 class TestCourseworkModel(unittest.TestCase):
 
     def setUp(self):
         self.global_clock = SynchronizingClock(max_ticks=100)
-        self.lecturer_count = 3
+        self.lecturer_count = 1
         self.student_count = 7
-        self.semester_size = 3  # classes per student
+        self.semester_size = 1  # classes per student
 
         self.students = []
         for i in range(self.student_count):
@@ -48,7 +47,6 @@ class TestCourseworkModel(unittest.TestCase):
                         self.students[i % self.student_count])
 
     def test_model_basic(self):
-        # TODO: What's the best way to encode the constraint text?
         essay_deadline = Deadline(10, self.global_clock)
         programming_deadline = Deadline(10, self.global_clock)
         write_essay_constraint = ResourceDelta({'essays_written': 1})
@@ -72,34 +70,29 @@ class TestCourseworkModel(unittest.TestCase):
         for i in range(len(self.classes)):
             lecturer = self.lecturers[i]
             for student in self.classes[i]:
-                obligation = [essay_writing, programming_assignment][i%2]
+                obligation = programming_assignment
                 lecturer.delegate_responsibility(obligation,
                                                     [0.75
                                                     for item in obligation.constraint_set],
                                                     student)
-        print(2)
-
-        # Move five ticks forward
-        for i in range(5):
-            print('i: ' + str(i),)
-            self.global_clock.tick()
-            sleep(1)
 
         # Set alternative assignments
         for i in range(len(self.classes)):
             lecturer = self.lecturers[i]
             for student in self.classes[i]:
-                obligation = [essay_writing, programming_assignment][(i+1)%2]
+                obligation = essay_writing
                 lecturer.delegate_responsibility(obligation,
                                                     [0.75
                                                     for item in obligation.constraint_set],
                                                     student)
 
-        print('ticking again')
-        for i in range(16):
+        for i in range(22):
             self.global_clock.tick()
-            print('i: ' + str(i),)
-            sleep(1)
+
+        for student in self.students:
+            print(student.socio_states)
+            self.assertTrue(student.get_sociotechnical_state('working_programs') == 1)
+            self.assertTrue(student.get_sociotechnical_state('essays_written') == 1)
 
         for lecturer in self.lecturers:
             lecturer.initiate_shutdown()
@@ -114,6 +107,3 @@ class TestCourseworkModel(unittest.TestCase):
 
         for student in self.students:
             student.wait_for_shutdown()
-
-        for student in self.students:
-            self.assertTrue(student.get_sociotechnical_state('essays_written') == 1)

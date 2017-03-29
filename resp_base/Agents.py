@@ -5,8 +5,6 @@ from abc import ABCMeta
 from .utility_functions import mean, flatten
 from .Responsibilities import Act, ResponsibilityEffect
 from copy import copy
-from time import sleep
-
 
 
 class ResponsibleAgent(TheatreActor):
@@ -14,12 +12,18 @@ class ResponsibleAgent(TheatreActor):
 
     __metaclass__ = ABCMeta
 
-    def __init__(self, notions, name, clock,  workflows: list):
+    def __init__(self,
+                 notions,
+                 name,
+                 clock,
+                 workflows: list,
+                 sociotechnical_states = {}):
         super().__init__(name, clock)
         self.responsibilities = copy(notions)  # Default beliefs about the world
         self.notions = copy(notions)
         self.consequential_responsibilities = []  # All discharged constraints
         self.workflows = workflows
+        self.socio_states = {}
         self.idle_act = Act(ResponsibilityEffect({}),
                             self.idling.idle,
                             self.idling)
@@ -115,8 +119,10 @@ class ResponsibleAgent(TheatreActor):
         if resps == []:
             return None
         else:
-            return max(resps,
+            resp = max(resps,
                        key=lambda x: mean(x.importance_score_set.importances))
+            print(resp.calculate_effect(), resps)
+            return resp
 
     def next_action(self):
         resp_chosen = self.choose_responsibility()
@@ -139,8 +145,6 @@ class ResponsibleAgent(TheatreActor):
                     next_action.args)
 
     def calculate_delay(self, entry_point, workflow=None, args=()):
-        sleep(10)
-        print('calculating delay')
         # If the current responsibility is None, we're idling.
         if self.current_responsibility is None:
             return 1  # Duration of an idle
@@ -153,13 +157,8 @@ class ResponsibleAgent(TheatreActor):
             discharged_successfully, constraint_satisfactions = value
             self.consequential_responsibilities.append(constraint_satisfactions)
             if discharged_successfully:
-                print(str(self) + ' discharged successfully!')
                 self.responsibilities.remove(self.current_responsibility)
                 self.current_responsibility = None
-            else:
-                print(str(self) + ' did not successfully discharge.')
-        else:
-            print(str(self) + "'s action returned None...")
 
     def register_act(self,
                      act: Act):
@@ -173,7 +172,5 @@ class ResponsibleAgent(TheatreActor):
         self.workflows.append(workflow)
 
     def get_sociotechnical_state(self, state_key):
-        for workflow in self.workflows:
-            if state_key in workflow.socio_states.keys():
-                return workflow.socio_states[state_key]
-        return None
+        return self.socio_states.get(state_key,
+                                     None)
