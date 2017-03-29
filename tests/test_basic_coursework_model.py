@@ -4,19 +4,16 @@ from resp_base import CourseworkWorkflow
 from resp_base import ResponsibleAgent
 from theatre_ag.theatre_ag import SynchronizingClock
 import unittest
+from time import sleep
 
 
 class TestCourseworkModel(unittest.TestCase):
 
     def setUp(self):
-        # TODO: What's the model duration?
         self.global_clock = SynchronizingClock(max_ticks=100)
         self.lecturer_count = 3
         self.student_count = 7
         self.semester_size = 3  # classes per student
-
-        # Create a bunch of self.lecturers and self.students.
-        # TODO: What notions should a student have to begin with?
 
         self.students = []
         for i in range(self.student_count):
@@ -26,17 +23,15 @@ class TestCourseworkModel(unittest.TestCase):
             # Create acts and effects to register with the student created here
             writing_effect = ResponsibilityEffect({'essays_written': 1})
             programming_effect = ResponsibilityEffect({'working_programs': 1})
-            writing_act = Act(student_workflow.write_essay, student_workflow)
-            programming_act = Act(student_workflow.write_program, student_workflow)
+            writing_act = Act(writing_effect, student_workflow.write_essay, student_workflow)
+            programming_act = Act(programming_effect, student_workflow.write_program, student_workflow)
 
             # Register the acts
-            curr_student.register_act(writing_effect, writing_act)
-            curr_student.register_act(programming_effect, programming_act)
+            curr_student.register_act(writing_act)
+            curr_student.register_act(programming_act)
 
             curr_student.start()
             self.students.append(curr_student)
-
-        # TODO: What notions should a lecturer have to begin with?
 
         self.lecturers = []
         for i in range(self.lecturer_count):
@@ -88,6 +83,7 @@ class TestCourseworkModel(unittest.TestCase):
         for i in range(5):
             print('i: ' + str(i),)
             self.global_clock.tick()
+            sleep(1)
 
         # Set alternative assignments
         for i in range(len(self.classes)):
@@ -100,14 +96,11 @@ class TestCourseworkModel(unittest.TestCase):
                                                     student)
 
         print('ticking again')
-        [self.global_clock.tick() for i in range(10)]
+        for i in range(16):
+            self.global_clock.tick()
+            print('i: ' + str(i),)
+            sleep(1)
 
-        for student in self.students:
-            self.assertTrue(student.essays_written == 1)
-
-
-
-    def tearDown(self):
         for lecturer in self.lecturers:
             lecturer.initiate_shutdown()
 
@@ -121,3 +114,6 @@ class TestCourseworkModel(unittest.TestCase):
 
         for student in self.students:
             student.wait_for_shutdown()
+
+        for student in self.students:
+            self.assertTrue(student.get_sociotechnical_state('essays_written') == 1)

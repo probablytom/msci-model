@@ -49,16 +49,41 @@ class Responsibility:
 
 class ResponsibilityEffect:
     def __init__(self, effect_dict):
-        self.effect_dict = effect_dict
+        self.effects = [(k, v) for k, v in effect_dict.items()]
+
+    def __hash__(self):
+        return str(self).__hash__()  # Hacky but should work...
+
+    @property
+    def effect_dict(self):
+        return dict(self.effects)
 
     def __eq__(self, other):
         if type(self) != type(other):
             return False
         return self.effect_dict == other.effect_dict
 
+    def get(self, effect_key):
+        if effect_key in self.effect_dict.keys():
+            return self.effect_dict[effect_key]
+        return 0  # No effect for a key which this repsonsibility doesn't effect!
+
+    def disregard(self, effect_key):
+        '''
+        Alters the ResponsibilityEffect so as to ignore certain parameters.
+        This method mutates the ResponsibilityEffect, so it's best to make a backup.
+        :param effect_key: The key that should be ignored in this ResponsibilityEffect
+        '''
+        self.effects = [item for item in self.effects
+                        if effect_key not in item]
+
+    def __str__(self):
+        return "ResponsibilityEffect: " + str(self.effect_dict)
+
 
 class Act:
-    def __init__(self, entry_point_function, workflow=None, args=()):
+    def __init__(self, effect, entry_point_function, workflow=None, args=()):
         self.entry_point_function = entry_point_function
         self.workflow = workflow
         self.args = args
+        self.effect = effect

@@ -1,11 +1,11 @@
 from theatre_ag.theatre_ag.actor import Actor as TheatreActor
-from theatre_ag.theatre_ag import default_cost
 from theatre_ag.theatre_ag.task import Task
 from .Responsibilities import Responsibility, ImportanceScoreSet, Obligation
 from abc import ABCMeta
 from .utility_functions import mean, flatten
 from .Responsibilities import Act, ResponsibilityEffect
 from copy import copy
+from time import sleep
 
 
 
@@ -20,10 +20,13 @@ class ResponsibleAgent(TheatreActor):
         self.notions = copy(notions)
         self.consequential_responsibilities = []  # All discharged constraints
         self.workflows = workflows
-        self.idle_act = Act(self.idling.idle, self.idling)
+        self.idle_act = Act(ResponsibilityEffect({}),
+                            self.idling.idle,
+                            self.idling)
 
         # Assign all of the workflows to me
-        [workflow.assign_agent(self) for workflow in self.workflows]
+        for workflow in self.workflows:
+            workflow.assign_agent(self)
 
         # To be updated with the responsibility the current action represents
         self.current_responsibility = None
@@ -90,8 +93,7 @@ class ResponsibleAgent(TheatreActor):
         direction.
         '''
         intended_effect = responsibility.calculate_effect()
-        intended_effect = [effect for effect in intended_effect
-                           if 'duration' not in effect]
+        intended_effect.disregard('duration')
         return self.acts.get(intended_effect,
                              self.idle_act)
 
@@ -118,6 +120,7 @@ class ResponsibleAgent(TheatreActor):
 
     def next_action(self):
         resp_chosen = self.choose_responsibility()
+        self.current_responsibility = resp_chosen
         if resp_chosen is not None:
             self.current_responsibility = resp_chosen
             discharge_act = self.choose_action(resp_chosen)
@@ -130,37 +133,47 @@ class ResponsibleAgent(TheatreActor):
         # Get the next action
         next_action = self.next_action()
 
-        # Depending on whether the next action is to idle or is a free
-        # action, act accordingly.
-        if next_action is not self.idle_act:
-            # Add its duration
-            raise NotImplemented  # I need to change the costing function to Tim's new method!
-            duration = \
-                self.current_responsibility.calculate_effect()['duration']
-            next_action = default_cost(duration)(next_action)
-
-        else:
-            # We're idling
-            workflow = self.idling
-
         # Create and return the relevant task
-        task = Task(workflow, next_action)
-        return task
+        return Task(next_action.entry_point_function,
+                    next_action.workflow,
+                    next_action.args)
 
-    def handle_return_value(self, return_value):
-        if return_value is not None:
-            discharged_successfully, constraint_satisfactions = return_value
+    def calculate_delay(self, entry_point, workflow=None, args=()):
+        sleep(10)
+        print('calculating delay')
+        # If the current responsibility is None, we're idling.
+        if self.current_responsibility is None:
+            return 1  # Duration of an idle
+        else:
+            # Get the duration of the current responsibility as the length of the task.
+            return self.current_responsibility.calculate_effect().get('duration')
+
+    def handle_task_return(self, task, value):
+        if value is not None:
+            discharged_successfully, constraint_satisfactions = value
             self.consequential_responsibilities.append(constraint_satisfactions)
             if discharged_successfully:
+                print(str(self) + ' discharged successfully!')
                 self.responsibilities.remove(self.current_responsibility)
                 self.current_responsibility = None
+            else:
+                print(str(self) + ' did not successfully discharge.')
+        else:
+            print(str(self) + "'s action returned None...")
 
     def register_act(self,
-                     effect: ResponsibilityEffect,
                      act: Act):
-        self.acts[effect] = act
+        act.args = [self]
+        act.entry_point_function.default_cost = 0
+        self.acts[act.effect] = act
 
     def register_new_workflow(self,
                               workflow):
         workflow.assign_agent(self)
         self.workflows.append(workflow)
+
+    def get_sociotechnical_state(self, state_key):
+        for workflow in self.workflows:
+            if state_key in workflow.socio_states.keys():
+                return workflow.socio_states[state_key]
+        return None

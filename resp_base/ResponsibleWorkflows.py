@@ -5,9 +5,9 @@ from random import random, choice
 class CourseworkWorkflow:
 
     def __init__(self):
-        self.essays_written = 0
-        self.working_programs = 0
         self.agent = None
+        self.socio_states = {'essays_written': 0,
+                             'working_programs': 0}
 
     def assign_agent(self, agent):
         self.agent = agent
@@ -17,41 +17,41 @@ class CourseworkWorkflow:
     # RETURNS: tuple (a,b):
     #     a: success bool
     #     b: set of constraints with pass/failure
-    @default_cost(1)
-    def write_essay(self):
+    def write_essay(self, agent):
         written_successfully = (random() > 0.1)
+        written_successfully = True
         if written_successfully:
-            self.essays_written += 1
+            self.socio_states['essays_written'] += 1
             # Essay writing responsibilities have deadlines and essay details
-            for i in range(len(self.agent.curent_responsibility.importance_score_set.constraints)):
-                self.agent.curent_responsibility.importance_score_set.constraints[i].record_outcome(True)
+            for i in range(len(agent.current_responsibility.importance_score_set.constraints)):
+                agent.current_responsibility.importance_score_set.constraints[i].record_outcome(True)
         else:
             # Fail to write an essay one in ten times
-            for i in range(len(self.agent.curent_responsibility.importance_score_set.constraints)):
-                self.agent.curent_responsibility.importance_score_set.constraints[i].record_outcome(True)
+            for i in range(len(agent.current_responsibility.importance_score_set.constraints)):
+                agent.current_responsibility.importance_score_set.constraints[i].record_outcome(True)
             # One constraint will have failed.
             failed_responsibility = choice(
-                range(len(self.agent.curent_responsibility.importance_score_set.constraints)))
-            self.agent.curent_responsibility.importance_score_set.constraints[
+                range(len(agent.current_responsibility.importance_score_set.constraints)))
+            agent.current_responsibility.importance_score_set.constraints[
                 failed_responsibility].record_outcome(False)
-        return (written_successfully, self.agent.curent_responsibility.importance_score_set.constraints)
+        return (written_successfully, agent.current_responsibility.importance_score_set.constraints)
 
-    @default_cost(1)
-    def write_program(self):
+    def write_program(self, agent):
         written_successfully = (random() > 0.1)
+        written_successfully = True
         if written_successfully:
-            self.working_programs += 1
+            self.socio_states['working_programs'] += 1
             # Essay writing responsibilities have deadlines and essay details
-            for i in range(len(self.agent.curent_responsibility.importance_score_set.constraints)):
-                self.agent.curent_responsibility.importance_score_set.constraints[i].record_outcome(True)
+            for i in range(len(agent.current_responsibility.importance_score_set.constraints)):
+                agent.current_responsibility.importance_score_set.constraints[i].record_outcome(True)
         else:
             # Fail to write an essay one in ten times
-            for i in range(len(self.agent.curent_responsibility.importance_score_set.constraints)):
-                self.agent.curent_responsibility.importance_score_set.constraints[i].record_outcome(True)
+            for i in range(len(agent.current_responsibility.importance_score_set.constraints)):
+                agent.current_responsibility.importance_score_set.constraints[i].record_outcome(True)
                 # One constraint will have failed.
             failed_responsibility = choice(
-                range(len(self.agent.curent_responsibility.importance_score_set.constraints)))
-            self.agent.curent_responsibility.importance_score_set.constraints[
+                range(len(agent.current_responsibility.importance_score_set.constraints)))
+            agent.current_responsibility.importance_score_set.constraints[
                 failed_responsibility].record_outcome(False)
 
 
