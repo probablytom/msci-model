@@ -7,7 +7,6 @@ class CourseworkWorkflow:
     def __init__(self):
         self.essays_written = 0
         self.working_programs = 0
-
         self.agent = None
 
     def assign_agent(self, agent):
@@ -18,6 +17,7 @@ class CourseworkWorkflow:
     # RETURNS: tuple (a,b):
     #     a: success bool
     #     b: set of constraints with pass/failure
+    @default_cost(1)
     def write_essay(self):
         written_successfully = (random() > 0.1)
         if written_successfully:
@@ -36,6 +36,7 @@ class CourseworkWorkflow:
                 failed_responsibility].record_outcome(False)
         return (written_successfully, self.agent.curent_responsibility.importance_score_set.constraints)
 
+    @default_cost(1)
     def write_program(self):
         written_successfully = (random() > 0.1)
         if written_successfully:
