@@ -23,18 +23,18 @@ class CourseworkWorkflow:
                 agent.socio_states['essays_written'] = 0
             agent.socio_states['essays_written'] += 1
             # Essay writing responsibilities have deadlines and essay details
-            for i in range(len(agent.current_responsibility.importance_score_set.constraints)):
-                agent.current_responsibility.importance_score_set.constraints[i].record_outcome(True)
+            for i in range(len(agent.current_responsibility.constraints)):
+                agent.current_responsibility.constraints[i].record_outcome(True)
         else:
             # Fail to write an essay one in ten times
-            for i in range(len(agent.current_responsibility.importance_score_set.constraints)):
-                agent.current_responsibility.importance_score_set.constraints[i].record_outcome(True)
-            # One constraint will have failed.
+            for i in range(len(agent.current_responsibility.constraints)):
+                agent.current_responsibility.constraints[i].record_outcome(True)
+                # One constraint will have failed.
             failed_responsibility = choice(
-                range(len(agent.current_responsibility.importance_score_set.constraints)))
-            agent.current_responsibility.importance_score_set.constraints[
+                range(len(agent.current_responsibility.constraints)))
+            agent.current_responsibility.constraints[
                 failed_responsibility].record_outcome(False)
-        return (written_successfully, agent.current_responsibility.importance_score_set.constraints)
+        return (written_successfully, agent.current_responsibility.constraints)
 
     def write_program(self, agent):
         written_successfully = (random() > 0.1)
@@ -43,19 +43,19 @@ class CourseworkWorkflow:
             if 'working programs' not in agent.socio_states.keys():
                 agent.socio_states['working_programs'] = 0
             agent.socio_states['working_programs'] += 1
-            # Essay writing responsibilities have deadlines and essay details
-            for i in range(len(agent.current_responsibility.importance_score_set.constraints)):
-                agent.current_responsibility.importance_score_set.constraints[i].record_outcome(True)
+            # programming responsibilities have deadlines and specs
+            for i in range(len(agent.current_responsibility.constraints)):
+                agent.current_responsibility.constraints[i].record_outcome(True)
         else:
             # Fail to write an essay one in ten times
-            for i in range(len(agent.current_responsibility.importance_score_set.constraints)):
-                agent.current_responsibility.importance_score_set.constraints[i].record_outcome(True)
+            for i in range(len(agent.current_responsibility.constraints)):
+                agent.current_responsibility.constraints[i].record_outcome(True)
                 # One constraint will have failed.
             failed_responsibility = choice(
-                range(len(agent.current_responsibility.importance_score_set.constraints)))
-            agent.current_responsibility.importance_score_set.constraints[
+                range(len(agent.current_responsibility.constraints)))
+            agent.current_responsibility.constraints[
                 failed_responsibility].record_outcome(False)
-        return (written_successfully, agent.current_responsibility.importance_score_set.constraints)
+        return (written_successfully, agent.current_responsibility.constraints)
 
 
 class DummyWorkflow:

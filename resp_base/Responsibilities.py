@@ -1,41 +1,42 @@
-import theatre_ag
-from abc import abstractmethod, ABCMeta
-from .utility_functions import flatten, mean
 from .Constraints import Deadline, ResourceDelta
-from random import random, choice
+
+
+class UnbalancedImportancesError(Exception):
+    pass
 
 
 class Obligation:
     def __init__(self, constraint_set: list):
         self.constraint_set = constraint_set
 
-
-# An importance score set is deliberately seperate from the responsibility,
-# becase we allocate new importances to constraints every time we assign an
-# obligation.
-class ImportanceScoreSet:
-    def __init__(self,
-                 obligation: Obligation,
-                 importances: list):
-        constraints = obligation.constraint_set
-        if len(constraints) != len(importances):
-            class MissingImportanceInformationException(Exception): pass
-            raise MissingImportanceInformationException()
-        self.constraints = constraints
-        self.importances = importances
-        self.importance_map = dict(zip(constraints, importances))
+    def set_importances(self, importances):
+        if len(importances) != len(self.constraint_set):
+            raise UnbalancedImportancesError()
+        for i in range(len(importances)):
+            self.constraint_set[i].assign_importance(importances[i])
 
 
 class Responsibility:
-    def __init__(self, importance_score_set, authority, delegee):
-        self.importance_score_set = importance_score_set
-        self.constraints = importance_score_set.constraints
+    def __init__(self,
+                 obligation: Obligation,
+                 authority,
+                 delegee):
+        self.obligation = obligation
         self.authority = authority
         self.delegee = delegee
 
+    @property
+    def constraints(self):
+        return self.obligation.constraint_set
+
+    @property
+    def importances(self):
+        return [constraint.importance
+                for constraint in self.constraints]
+
     def calculate_effect(self):
         total_effect = {'duration': 0}
-        for constraint in self.importance_score_set.constraints:
+        for constraint in self.constraints:
             if isinstance(constraint, ResourceDelta):
                 for factor, effect in constraint.factors.items():
                     if factor not in total_effect.keys():

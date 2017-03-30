@@ -86,7 +86,7 @@ class TestCourseworkModel(unittest.TestCase):
                                                     for item in obligation.constraint_set],
                                                     student)
 
-        for i in range(22):
+        for i in range(25):
             self.global_clock.tick()
 
         for student in self.students:
@@ -94,6 +94,8 @@ class TestCourseworkModel(unittest.TestCase):
             self.assertTrue(student.get_sociotechnical_state('working_programs') == 1)
             self.assertTrue(student.get_sociotechnical_state('essays_written') == 1)
 
+
+    def tearDown(self):
         for lecturer in self.lecturers:
             lecturer.initiate_shutdown()
 

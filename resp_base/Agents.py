@@ -1,6 +1,6 @@
 from theatre_ag.theatre_ag.actor import Actor as TheatreActor
 from theatre_ag.theatre_ag.task import Task
-from .Responsibilities import Responsibility, ImportanceScoreSet, Obligation
+from .Responsibilities import Responsibility, Obligation
 from abc import ABCMeta
 from .utility_functions import mean, flatten
 from .Responsibilities import Act, ResponsibilityEffect
@@ -27,6 +27,7 @@ class ResponsibleAgent(TheatreActor):
         self.idle_act = Act(ResponsibilityEffect({}),
                             self.idling.idle,
                             self.idling)
+        self.interpreting_coefficients = {}
 
         # Assign all of the workflows to me
         for workflow in self.workflows:
@@ -43,25 +44,41 @@ class ResponsibleAgent(TheatreActor):
 
     # TODO: This is deeply broken...
     def delegate_responsibility(self,
-                                resp: Obligation,
+                                obligation: Obligation,
                                 importances: list,
                                 delegee):  # Make this a ResponsibleAgent
-        importance_score_set = ImportanceScoreSet(resp, importances)
-        resp = Responsibility(importance_score_set, self, delegee)
+        obligation.set_importances(importances)
+        resp = Responsibility(obligation, self, delegee)
         accepted = resp.delegee.accept_responsibility(resp)
         if not accepted:
             raise NotImplemented("What happens if a responsibility \
                                   isn't allocated?")
 
     def interpret(self, resp):
+        resp = copy(resp)
+        for factor_name, coefficient in self.interpreting_coefficients.items():
+            for constraint in resp.constraints:
+                if factor_name in constraint.factors.keys():
+
+                    # Work out the new importance value.
+                    old_importance = constraint.importance
+                    new_importance = old_importance * coefficient
+                    new_importance = max(min(1, new_importance), 0)  # Normalise!
+                    constraint.assign_importance(new_importance)
+
+        # Return the responsibility with a new set of constraints
         return resp
 
+    def __decide_acceptance(self, resp):
+        importances = [constraint.importance
+                       for constraint in resp.constraints]
+        return mean(importances) > 0.5
+
     def accept_responsibility(self, resp: Responsibility):
-        #resp = self.interpret(resp)
-        # TODO: fix this calculation
-        accepted = mean(resp.importance_score_set.importances) > 0.5
+        interpreted_responsibility = self.interpret(resp)
+        accepted = self.__decide_acceptance(interpreted_responsibility)
         if accepted:
-            self.responsibilities.append(resp)
+            self.responsibilities.append(interpreted_responsibility)
         return accepted
 
     def judge_degree_responsible(self, other_agent):
@@ -120,7 +137,7 @@ class ResponsibleAgent(TheatreActor):
             return None
         else:
             resp = max(resps,
-                       key=lambda x: mean(x.importance_score_set.importances))
+                       key=lambda x: mean(x.importances))
             print(resp.calculate_effect(), resps)
             return resp
 
