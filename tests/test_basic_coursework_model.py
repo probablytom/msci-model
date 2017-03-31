@@ -1,5 +1,5 @@
-from resp_base import Obligation, Deadline, ResourceDelta, ResponsibilityEffect, Act
-from resp_base import CourseworkWorkflow, ResponsibleAgent, LazyAgent
+from resp_base import Obligation, Deadline, ResourceDelta, ResponsibilityEffect, Act, BasicResponsibleAgent
+from resp_base import CourseworkWorkflow, IncompetentCourseworkWorkflow, LazyAgent, HedonisticAgent, StudiousAgent
 from theatre_ag.theatre_ag import SynchronizingClock
 import unittest
 
@@ -10,12 +10,12 @@ class TestCourseworkModel(unittest.TestCase):
         self.global_clock = SynchronizingClock(max_ticks=100)
         self.lecturer_count = 1
         self.student_count = 7
-        self.semester_size = 1  # classes per student
 
         self.students = []
-        for i in range(self.student_count):
-            student_workflow = CourseworkWorkflow()
-            curr_student = ResponsibleAgent([], "student_"+str(i), self.global_clock, [CourseworkWorkflow()])
+
+        def construct_student(actor_class, workflow):
+            student_workflow = workflow()
+            curr_student = actor_class([], "student_"+str(i), self.global_clock, [student_workflow])
 
             # Create acts and effects to register with the student created here
             writing_effect = ResponsibilityEffect({'essays_written': 1})
@@ -30,25 +30,24 @@ class TestCourseworkModel(unittest.TestCase):
             curr_student.start()
             self.students.append(curr_student)
 
+        for i in range(self.student_count):
+            for type_of_student in [LazyAgent, HedonisticAgent, StudiousAgent]:
+                for competence in [CourseworkWorkflow, IncompetentCourseworkWorkflow]:
+                    construct_student(type_of_student, competence)
+
         self.lecturers = []
         for i in range(self.lecturer_count):
-            curr_lecturer = ResponsibleAgent([], "lecturer_"+str(i), self.global_clock, [])
+            curr_lecturer = BasicResponsibleAgent([], "lecturer_"+str(i), self.global_clock, [])
             curr_lecturer.start()
             self.lecturers.append(curr_lecturer)
-
-        # We'll need some classes -- just collections of students
-        self.classes = [[]] * self.lecturer_count  # A class for every lecturer
-
-        # Should we randomise class allocation?
-        for i in range(self.student_count * self.semester_size):
-                self.classes[i % self.lecturer_count].append(
-                        self.students[i % self.student_count])
 
     def test_model_basic(self):
         essay_deadline = Deadline(10, self.global_clock)
         programming_deadline = Deadline(10, self.global_clock)
+        relax_deadline = Deadline(2, self.global_clock)
         write_essay_constraint = ResourceDelta({'essays_written': 1})
         write_code_constraint = ResourceDelta({'working_programs': 1})
+        relax_constraint = ResourceDelta({'personal_enjoyment': 1})
 
         # Extracurricular activity durations:
         research_writing_duration = Deadline(30, self.global_clock)
@@ -63,37 +62,36 @@ class TestCourseworkModel(unittest.TestCase):
                                     write_essay_constraint])
         extra_programming = Obligation([research_programming_duration,
                                         write_code_constraint])
+        relaxation = Obligation([relax_constraint, relax_deadline])
 
-        # Now we need to make something happen here.
-        for i in range(len(self.classes)):
-            lecturer = self.lecturers[i]
-            for student in self.classes[i]:
-                obligation = programming_assignment
-                lecturer.delegate_responsibility(obligation,
-                                                    [0.75
-                                                    for item in obligation.constraint_set],
-                                                    student)
+        # Give all students a writing and programming assignment.
+        lecturer = self.lecturers[0]
+        for student in self.students:
+            lecturer.delegate_responsibility(programming_assignment,
+                                             [0.75
+                                              for item in programming_assignment.constraint_set],
+                                             student)
+            lecturer.delegate_responsibility(essay_writing,
+                                             [0.75
+                                              for item in essay_writing.constraint_set],
+                                             student)
 
         # Set alternative assignments
-        for i in range(len(self.classes)):
-            lecturer = self.lecturers[i]
-            for student in self.classes[i]:
-                obligation = essay_writing
-                lecturer.delegate_responsibility(obligation,
-                                                    [0.75
-                                                    for item in obligation.constraint_set],
-                                                    student)
+        lecturer = self.lecturers[0]
+        for student in self.students:
+            obligation = essay_writing
+            lecturer.delegate_responsibility(obligation,
+                                             [0.75
+                                              for item in obligation.constraint_set],
+                                             student)
 
         for i in range(25):
             self.global_clock.tick()
 
+        # All students should have written essays and programs, because no responsibility to relax is set.
         for student in self.students:
-            if type(student) is ResponsibleAgent:
                 self.assertTrue(student.get_sociotechnical_state('working_programs') == 1)
                 self.assertTrue(student.get_sociotechnical_state('essays_written') == 1)
-            elif type(student) is LazyAgent:
-                # TODO: write a proper test to show lazy agents are less effective.
-                self.assertTrue(False)
 
 
     def tearDown(self):

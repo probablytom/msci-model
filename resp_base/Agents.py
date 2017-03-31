@@ -8,7 +8,7 @@ from .Responsibilities import Act, ResponsibilityEffect
 from copy import copy, deepcopy
 
 
-class ResponsibleAgent(TheatreActor):
+class BasicResponsibleAgent(TheatreActor):
     responsible = True  # This will be a toggle for deactivating the formalism
 
     __metaclass__ = ABCMeta
@@ -25,7 +25,7 @@ class ResponsibleAgent(TheatreActor):
         self.consequential_responsibilities = []  # All discharged constraints
         self.workflows = workflows
         self.socio_states = sociotechnical_states
-        self.idle_act = Act(ResponsibilityEffect({}),
+        self.idle_act = Act(ResponsibilityEffect({'personal_enjoyment': 1}),
                             self.idling.idle,
                             self.idling)
         self.interpreting_coefficients = {}
@@ -72,9 +72,10 @@ class ResponsibleAgent(TheatreActor):
         return resp
 
     def __decide_acceptance(self, resp):
-        importances = [constraint.importance
-                       for constraint in resp.constraints]
-        return mean(importances) > 0.5
+        # importances = [constraint.importance
+        #                for constraint in resp.constraints]
+        # return mean(importances) > 0.5
+        return True
 
     def accept_responsibility(self, resp: Responsibility):
         interpreted_responsibility = self.interpret(resp)
@@ -161,7 +162,7 @@ class ResponsibleAgent(TheatreActor):
             return None
         else:
             resp = max(resps,
-                       key=lambda x: mean(x.importances))
+                       key=lambda x: sum(x.importances))
             print(resp.calculate_effect(), resps)
             return resp
 
@@ -217,7 +218,7 @@ class ResponsibleAgent(TheatreActor):
                                      None)
 
 
-class LazyAgent(ResponsibleAgent):
+class LazyAgent(BasicResponsibleAgent):
     def __init__(self,
                  notions,
                  name,
@@ -231,3 +232,33 @@ class LazyAgent(ResponsibleAgent):
                          sociotechnical_states)
         # Lazy agents pay less attention to deadlines
         self.interpreting_coefficients = {Deadline: 0.5}
+
+
+class HedonisticAgent(BasicResponsibleAgent):
+    def __init__(self,
+                 notions,
+                 name,
+                 clock,
+                 workflows: list,
+                 sociotechnical_states = {}):
+        super().__init__(notions,
+                         name,
+                         clock,
+                         workflows,
+                         sociotechnical_states)
+        self.interpreting_coefficients = {'personal_enjoyment': 5}
+
+class StudiousAgent(BasicResponsibleAgent):
+    def __init__(self,
+                 notions,
+                 name,
+                 clock,
+                 workflows: list,
+                 sociotechnical_states = {}):
+        super().__init__(notions,
+                         name,
+                         clock,
+                         workflows,
+                         sociotechnical_states)
+        self.interpreting_coefficients = {'working_programs': 2,
+                                          'essays_written': 2}
