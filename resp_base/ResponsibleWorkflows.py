@@ -6,6 +6,8 @@ class CourseworkWorkflow:
 
     def __init__(self):
         self.agent = None
+        self.competence = {'essays_written': 0.9,
+                           'working_programs': 0.9}
 
     def assign_agent(self, agent):
         self.agent = agent
@@ -16,7 +18,7 @@ class CourseworkWorkflow:
     #     a: success bool
     #     b: set of constraints with pass/failure
     def write_essay(self, agent):
-        written_successfully = (random() > 0.1)
+        written_successfully = (random() < self.competence['essays_written'])
         written_successfully = True
         if written_successfully:
             if 'essays_written' not in agent.socio_states.keys():
@@ -37,7 +39,7 @@ class CourseworkWorkflow:
         return (written_successfully, agent.current_responsibility.constraints)
 
     def write_program(self, agent):
-        written_successfully = (random() > 0.1)
+        written_successfully = (random() < self.competence['working_programs'])
         written_successfully = True
         if written_successfully:
             if 'working programs' not in agent.socio_states.keys():
@@ -56,6 +58,13 @@ class CourseworkWorkflow:
             agent.current_responsibility.constraints[
                 failed_responsibility].record_outcome(False)
         return (written_successfully, agent.current_responsibility.constraints)
+
+
+class IncompetentCourseworkWorkflow(CourseworkWorkflow):
+    def __init__(self):
+        super().__init__()
+        self.competence = {'essays_written': 0.4,
+                           'working_programs': 0.4}
 
 
 class DummyWorkflow:
