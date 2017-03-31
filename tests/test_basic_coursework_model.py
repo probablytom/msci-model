@@ -9,33 +9,40 @@ class TestCourseworkModel(unittest.TestCase):
     def setUp(self):
         self.global_clock = SynchronizingClock(max_ticks=100)
         self.lecturer_count = 1
-        self.student_count = 7
+        self.student_count = 7  # (per type of student)
 
         self.students = []
+        self.lecturers = []
 
-        def construct_student(actor_class, workflow):
-            student_workflow = workflow()
-            curr_student = actor_class([], "student_"+str(i), self.global_clock, [student_workflow])
-
-            # Create acts and effects to register with the student created here
-            writing_effect = ResponsibilityEffect({'essays_written': 1})
-            programming_effect = ResponsibilityEffect({'working_programs': 1})
-            writing_act = Act(writing_effect, student_workflow.write_essay, student_workflow)
-            programming_act = Act(programming_effect, student_workflow.write_program, student_workflow)
-
-            # Register the acts
-            curr_student.register_act(writing_act)
-            curr_student.register_act(programming_act)
-
-            curr_student.start()
-            self.students.append(curr_student)
-
+        # Construct students
         for i in range(self.student_count):
             for type_of_student in [LazyAgent, HedonisticAgent, StudiousAgent]:
                 for competence in [CourseworkWorkflow, IncompetentCourseworkWorkflow]:
-                    construct_student(type_of_student, competence)
+                    student_workflow = competence()
+                    curr_student = type_of_student([],
+                                                   "student_"+str(len(self.students)),
+                                                   self.global_clock,
+                                                   [student_workflow])
 
-        self.lecturers = []
+                    # Create acts and effects to register with the student created here
+                    writing_effect = ResponsibilityEffect({'essays_written': 1})
+                    programming_effect = ResponsibilityEffect({'working_programs': 1})
+                    writing_act = Act(writing_effect,
+                                      student_workflow.write_essay,
+                                      student_workflow)
+                    programming_act = Act(programming_effect,
+                                          student_workflow.write_program,
+                                          student_workflow)
+
+                    # Register the acts
+                    curr_student.register_act(writing_act)
+                    curr_student.register_act(programming_act)
+
+                    curr_student.start()
+                    self.students.append(curr_student)
+
+
+        # Construct lecturers
         for i in range(self.lecturer_count):
             curr_lecturer = BasicResponsibleAgent([], "lecturer_"+str(i), self.global_clock, [])
             curr_lecturer.start()
@@ -50,8 +57,8 @@ class TestCourseworkModel(unittest.TestCase):
         relax_constraint = ResourceDelta({'personal_enjoyment': 1})
 
         # Extracurricular activity durations:
-        research_writing_duration = Deadline(30, self.global_clock)
-        research_programming_duration = Deadline(30, self.global_clock)
+        research_writing_duration = Deadline(5, self.global_clock)
+        research_programming_duration = Deadline(5, self.global_clock)
 
         # Obligations that responsibilities can be made from
         essay_writing = Obligation([essay_deadline,
@@ -76,16 +83,7 @@ class TestCourseworkModel(unittest.TestCase):
                                               for item in essay_writing.constraint_set],
                                              student)
 
-        # Set alternative assignments
-        lecturer = self.lecturers[0]
-        for student in self.students:
-            obligation = essay_writing
-            lecturer.delegate_responsibility(obligation,
-                                             [0.75
-                                              for item in obligation.constraint_set],
-                                             student)
-
-        for i in range(25):
+        for i in range(22):
             self.global_clock.tick()
 
         # All students should have written essays and programs, because no responsibility to relax is set.

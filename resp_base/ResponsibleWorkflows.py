@@ -1,5 +1,6 @@
 from theatre_ag.theatre_ag.workflow import treat_as_workflow
 from random import random, choice
+from time import sleep
 
 
 class CourseworkWorkflow:

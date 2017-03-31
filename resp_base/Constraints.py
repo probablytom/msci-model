@@ -15,6 +15,7 @@ class AbstractConstraint:
         self.outcome = None
         self.interpreted = False
         self.original_importance = None
+        self.importance = None
 
     def assign_importance(self, importance):
         # Only assign if we haven't already.

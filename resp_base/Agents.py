@@ -163,7 +163,6 @@ class BasicResponsibleAgent(TheatreActor):
         else:
             resp = max(resps,
                        key=lambda x: sum(x.importances))
-            print(resp.calculate_effect(), resps)
             return resp
 
     def next_action(self):
@@ -229,9 +228,10 @@ class LazyAgent(BasicResponsibleAgent):
                          name,
                          clock,
                          workflows,
-                         sociotechnical_states)
+                         copy(sociotechnical_states))
         # Lazy agents pay less attention to deadlines
         self.interpreting_coefficients = {Deadline: 0.5}
+        # TODO: construct an idle notion which this agent will sometimes prefer
 
 
 class HedonisticAgent(BasicResponsibleAgent):
@@ -245,8 +245,9 @@ class HedonisticAgent(BasicResponsibleAgent):
                          name,
                          clock,
                          workflows,
-                         sociotechnical_states)
+                         copy(sociotechnical_states))
         self.interpreting_coefficients = {'personal_enjoyment': 5}
+        # TODO: construct an idle notion which this agent will sometimes prefer
 
 class StudiousAgent(BasicResponsibleAgent):
     def __init__(self,
@@ -259,6 +260,7 @@ class StudiousAgent(BasicResponsibleAgent):
                          name,
                          clock,
                          workflows,
-                         sociotechnical_states)
+                         copy(sociotechnical_states))
         self.interpreting_coefficients = {'working_programs': 2,
                                           'essays_written': 2}
+        # TODO: construct an idle notion which this agent will sometimes prefer
