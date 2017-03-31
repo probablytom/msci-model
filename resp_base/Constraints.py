@@ -2,6 +2,10 @@ from abc import ABCMeta
 from theatre_ag.theatre_ag import SynchronizingClock
 
 
+class ImproperImportanceResetError(Exception):
+    pass
+
+
 class AbstractConstraint:
 
     __metaclass__ = ABCMeta
@@ -9,9 +13,25 @@ class AbstractConstraint:
     def __init__(self, factors: dict):
         self.factors = factors
         self.outcome = None
+        self.interpreted = False
+        self.original_importance = None
 
     def assign_importance(self, importance):
-        self.importance = importance
+        # Only assign if we haven't already.
+        if not self.interpreted:
+            self.original_importance = self.importance
+            self.importance = importance
+
+    def reset_importance(self, new_score=None):
+        # Only permit this to happen if we're currently interpreted; otherwise, nothing to reset.
+        if not self.interpreted:
+            raise ImproperImportanceResetError()
+
+        self.importance = self.original_importance
+        self.original_importance = None
+        self.interpreted = False
+        if new_score is not None:
+            self.assign_importance(new_score)
 
     def record_outcome(self, outcome):
         self.outcome = outcome

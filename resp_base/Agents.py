@@ -1,10 +1,11 @@
 from theatre_ag.theatre_ag.actor import Actor as TheatreActor
 from theatre_ag.theatre_ag.task import Task
+from .Constraints import Deadline
 from .Responsibilities import Responsibility, Obligation
 from abc import ABCMeta
 from .utility_functions import mean, flatten
 from .Responsibilities import Act, ResponsibilityEffect
-from copy import copy
+from copy import copy, deepcopy
 
 
 class ResponsibleAgent(TheatreActor):
@@ -23,7 +24,7 @@ class ResponsibleAgent(TheatreActor):
         self.notions = copy(notions)
         self.consequential_responsibilities = []  # All discharged constraints
         self.workflows = workflows
-        self.socio_states = {}
+        self.socio_states = sociotechnical_states
         self.idle_act = Act(ResponsibilityEffect({}),
                             self.idling.idle,
                             self.idling)
@@ -54,11 +55,12 @@ class ResponsibleAgent(TheatreActor):
             raise NotImplemented("What happens if a responsibility \
                                   isn't allocated?")
 
-    def interpret(self, resp):
+    def interpret(self,
+                  resp: Responsibility):
         resp = copy(resp)
-        for factor_name, coefficient in self.interpreting_coefficients.items():
+        for factor, coefficient in self.interpreting_coefficients.items():
             for constraint in resp.constraints:
-                if factor_name in constraint.factors.keys():
+                if factor in constraint.factors.keys() or factor == constraint.__class__:
 
                     # Work out the new importance value.
                     old_importance = constraint.importance
@@ -81,27 +83,49 @@ class ResponsibleAgent(TheatreActor):
             self.responsibilities.append(interpreted_responsibility)
         return accepted
 
-    def judge_degree_responsible(self, other_agent):
-        c_resps = other_agent.consequential_responsibilities
-        constraint_satisfactions = flatten(flatten(c_resps))
-        constraints = {}
+    def judge_degree_responsible(self,
+                                 other_agent):
 
-        # Filter constraints by type
-        for outcome in constraint_satisfactions:
-            if outcome.constraint_type not in constraints.keys():
-                constraints[outcome.constraint_type] = []
-            constraints[outcome.constraint_type].append(outcome)
+        # Get a new list of responsibilities, with importance scores
+        # re-interpreted by this agent's perspective on responsibility.
+        def re_interpret(resp: Responsibility):
+            resp = deepcopy(resp)
+            def restore_original_importance(resp):
+                for constraint in resp.constraints:
+                    constraint.reset_importance(constraint.original_importance)
 
+            restore_original_importance(resp)
+            return self.interpret(resp)
+        newly_interpreted_resps = [re_interpret(resp)
+                                   for resp in other_agent.responsibilities]
+
+        # ...is the below still accurate?
+        # TODO: review.
+        # With these newly interpreted responsibilities, for type of responsibility,
+        # calculate the average of the sum of the constraints of that type multiplied by their success as a boolean.
+        #               -------        ---        ------------------------                     --------------------
+        #                  ^            ^                     ^                                        ^- failure counts as 0
+        #                  |            |                     |-- The responsibility will have many constraints -- calculate each factor seperately.
+        #                  |            |-- Because there's potentially multiple constraints with the same factors, we want to sum the scores of each separate factor.
+        #                  |-- Because there's potentially multiple constraints of the same factor, we want to weight the successes by the failures -- so, calculate the mean of all of the factors' summed scores.
+        #
         degree_responsible = {}
-        # For each type, calculate the sum of the product of the outcome
-        #   against its importance
-        for constraint_type in constraints.keys():
-            degree_responsible[constraint_type] = sum(
-                [const.importance * const.outcome
-                 for const in constraints[constraint_type]
-                 ])
+        constraints = [constraint
+                       for responsibility in newly_interpreted_resps
+                       for constraint in responsibility.constraints]
+        for constraint in constraints:
+            for factor in constraint.factors.keys():
+                if factor not in degree_responsible.keys():
+                    degree_responsible[factor] = (0, 0)
+                score, count = degree_responsible[factor]
+                count += 1
+                if constraint.outcome:
+                    score += constraint.importance
 
-        # Return the dictionary of degrees of responsibility by type
+        for factor, scores in degree_responsible.items():
+            score, count = scores
+            degree_responsible[factor] = score/count  # calculate the average
+
         return degree_responsible
 
     def choose_action(self, responsibility):
@@ -191,3 +215,19 @@ class ResponsibleAgent(TheatreActor):
     def get_sociotechnical_state(self, state_key):
         return self.socio_states.get(state_key,
                                      None)
+
+
+class LazyAgent(ResponsibleAgent):
+    def __init__(self,
+                 notions,
+                 name,
+                 clock,
+                 workflows: list,
+                 sociotechnical_states = {}):
+        super().__init__(notions,
+                         name,
+                         clock,
+                         workflows,
+                         sociotechnical_states)
+        # Lazy agents pay less attention to deadlines
+        self.interpreting_coefficients = {Deadline: 0.5}

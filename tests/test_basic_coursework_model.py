@@ -1,7 +1,5 @@
-from resp_base import Obligation, Deadline, ResourceDelta
-from resp_base import ResponsibilityEffect, Act
-from resp_base import CourseworkWorkflow
-from resp_base import ResponsibleAgent
+from resp_base import Obligation, Deadline, ResourceDelta, ResponsibilityEffect, Act
+from resp_base import CourseworkWorkflow, ResponsibleAgent, LazyAgent
 from theatre_ag.theatre_ag import SynchronizingClock
 import unittest
 
@@ -90,9 +88,12 @@ class TestCourseworkModel(unittest.TestCase):
             self.global_clock.tick()
 
         for student in self.students:
-            print(student.socio_states)
-            self.assertTrue(student.get_sociotechnical_state('working_programs') == 1)
-            self.assertTrue(student.get_sociotechnical_state('essays_written') == 1)
+            if type(student) is ResponsibleAgent:
+                self.assertTrue(student.get_sociotechnical_state('working_programs') == 1)
+                self.assertTrue(student.get_sociotechnical_state('essays_written') == 1)
+            elif type(student) is LazyAgent:
+                # TODO: write a proper test to show lazy agents are less effective.
+                self.assertTrue(False)
 
 
     def tearDown(self):

@@ -34,7 +34,15 @@ class Responsibility:
         return [constraint.importance
                 for constraint in self.constraints]
 
+    def original_importances(self):
+        return [constraint.original_importance
+                for constraint in self.constraints]
+
     def calculate_effect(self):
+        '''
+        Calculates the desired effect of a responsibility.
+        :return: A ResponsibilityEffect, which accounts for all effects of this responsibility's constraints.
+        '''
         total_effect = {'duration': 0}
         for constraint in self.constraints:
             if isinstance(constraint, ResourceDelta):
