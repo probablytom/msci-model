@@ -1,11 +1,12 @@
 from theatre_ag.theatre_ag.actor import Actor as TheatreActor
 from theatre_ag.theatre_ag.task import Task
-from .Constraints import Deadline
+from .Constraints import Deadline, ResourceDelta
 from .Responsibilities import Responsibility, Obligation
 from abc import ABCMeta
 from .utility_functions import mean, flatten
 from .Responsibilities import Act, ResponsibilityEffect
 from copy import copy, deepcopy
+from time import sleep
 
 
 class BasicResponsibleAgent(TheatreActor):
@@ -18,8 +19,21 @@ class BasicResponsibleAgent(TheatreActor):
                  name,
                  clock,
                  workflows: list,
-                 sociotechnical_states = {}):
+                 sociotechnical_states = {},
+                 interpreting_coefficients = {}):
         super().__init__(name, clock)
+
+        self.interpreting_coefficients = interpreting_coefficients
+
+        # Make a responsibility for self for chilling out, which idling fulfils
+        chill_deadline = Deadline(1, clock)
+        chill_effect = ResourceDelta({'personal_enjoyment': 1})
+        chill = Obligation([chill_deadline,
+                            chill_effect])
+        chill.set_importances([0.2, 0.2])
+        chill_resp = Responsibility(chill, self, self)
+        notions.append(self.interpret(chill_resp))
+
         self.responsibilities = copy(notions)  # Default beliefs about the world
         self.notions = copy(notions)
         self.consequential_responsibilities = []  # All discharged constraints
@@ -28,7 +42,6 @@ class BasicResponsibleAgent(TheatreActor):
         self.idle_act = Act(ResponsibilityEffect({'personal_enjoyment': 1}),
                             self.idling.idle,
                             self.idling)
-        self.interpreting_coefficients = {}
 
         # Assign all of the workflows to me
         for workflow in self.workflows:
@@ -43,7 +56,6 @@ class BasicResponsibleAgent(TheatreActor):
         #     the string represents.
         self.acts = {}
 
-    # TODO: This is deeply broken...
     def delegate_responsibility(self,
                                 obligation: Obligation,
                                 importances: list,
@@ -145,8 +157,7 @@ class BasicResponsibleAgent(TheatreActor):
 
     @property
     def actionable_responsibilities(self):
-        return [resp for resp in copy(self.responsibilities)
-                if resp not in self.notions]
+        return self.responsibilities ## To be changed by actors who dont act on all notions
 
     def choose_responsibility(self):
         '''
@@ -163,11 +174,11 @@ class BasicResponsibleAgent(TheatreActor):
         else:
             resp = max(resps,
                        key=lambda x: sum(x.importances))
+            # print([(resp.calculate_effect(), resp.importances) for resp in self.responsibilities])
             return resp
 
     def next_action(self):
         resp_chosen = self.choose_responsibility()
-        self.current_responsibility = resp_chosen
         if resp_chosen is not None:
             self.current_responsibility = resp_chosen
             discharge_act = self.choose_action(resp_chosen)
@@ -198,7 +209,8 @@ class BasicResponsibleAgent(TheatreActor):
             discharged_successfully, constraint_satisfactions = value
             self.consequential_responsibilities.append(constraint_satisfactions)
             if discharged_successfully:
-                self.responsibilities.remove(self.current_responsibility)
+                if self.current_responsibility not in self.notions:
+                    self.responsibilities.remove(self.current_responsibility)
                 self.current_responsibility = None
 
     def register_act(self,
@@ -223,15 +235,14 @@ class LazyAgent(BasicResponsibleAgent):
                  name,
                  clock,
                  workflows: list,
-                 sociotechnical_states = {}):
+                 sociotechnical_states = {},
+                 interpreting_coefficients = {Deadline: 0.5}):
         super().__init__(notions,
                          name,
                          clock,
                          workflows,
-                         copy(sociotechnical_states))
-        # Lazy agents pay less attention to deadlines
-        self.interpreting_coefficients = {Deadline: 0.5}
-        # TODO: construct an idle notion which this agent will sometimes prefer
+                         copy(sociotechnical_states),
+                         copy(interpreting_coefficients))
 
 
 class HedonisticAgent(BasicResponsibleAgent):
@@ -240,14 +251,24 @@ class HedonisticAgent(BasicResponsibleAgent):
                  name,
                  clock,
                  workflows: list,
-                 sociotechnical_states = {}):
+                 sociotechnical_states = {},
+                 interpreting_coefficients = {'personal_enjoyment': 5}):
         super().__init__(notions,
                          name,
                          clock,
                          workflows,
-                         copy(sociotechnical_states))
-        self.interpreting_coefficients = {'personal_enjoyment': 5}
-        # TODO: construct an idle notion which this agent will sometimes prefer
+                         copy(sociotechnical_states),
+                         copy(interpreting_coefficients))
+
+    def handle_task_return(self, task, value):
+        if value is not None:
+            discharged_successfully, constraint_satisfactions = value
+            self.consequential_responsibilities.append(constraint_satisfactions)
+            if discharged_successfully:
+                if self.current_responsibility not in self.notions:
+                    self.responsibilities.remove(self.current_responsibility)
+                self.current_responsibility = None
+
 
 class StudiousAgent(BasicResponsibleAgent):
     def __init__(self,
@@ -255,12 +276,12 @@ class StudiousAgent(BasicResponsibleAgent):
                  name,
                  clock,
                  workflows: list,
-                 sociotechnical_states = {}):
+                 sociotechnical_states = {},
+                 interpreting_coefficients = {'working_programs': 2,
+                                              'essays_written': 2}):
         super().__init__(notions,
                          name,
                          clock,
                          workflows,
-                         copy(sociotechnical_states))
-        self.interpreting_coefficients = {'working_programs': 2,
-                                          'essays_written': 2}
-        # TODO: construct an idle notion which this agent will sometimes prefer
+                         copy(sociotechnical_states),
+                         copy(interpreting_coefficients))
