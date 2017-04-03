@@ -18,16 +18,14 @@ class AbstractConstraint:
         self.importance = None
 
     def assign_importance(self, importance):
+        self.original_importance = self.importance
+        self.importance = importance
         # Only assign if we haven't already.
-        if not self.interpreted:
-            self.original_importance = self.importance
-            self.importance = importance
+        if self.original_importance is None:
+            self.original_importance = importance  # If this is the first assignment, keep track of the true original importance
+        self.interpreted = True
 
     def reset_importance(self, new_score=None):
-        # Only permit this to happen if we're currently interpreted; otherwise, nothing to reset.
-        if not self.interpreted:
-            raise ImproperImportanceResetError()
-
         self.importance = self.original_importance
         self.original_importance = None
         self.interpreted = False

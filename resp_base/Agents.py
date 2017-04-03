@@ -42,6 +42,7 @@ class BasicResponsibleAgent(TheatreActor):
         self.idle_act = Act(ResponsibilityEffect({'personal_enjoyment': 1}),
                             self.idling.idle,
                             self.idling)
+        self.basic_judgement_responsible = 0.5  # How responsible is someone if you don't know what they've done before?
 
         # Assign all of the workflows to me
         for workflow in self.workflows:
@@ -61,7 +62,7 @@ class BasicResponsibleAgent(TheatreActor):
                                 importances: list,
                                 delegee):  # Make this a ResponsibleAgent
         obligation.set_importances(importances)
-        resp = Responsibility(obligation, self, delegee)
+        resp = Responsibility(copy(obligation), self, delegee)
         accepted = resp.delegee.accept_responsibility(resp)
         if not accepted:
             raise NotImplemented("What happens if a responsibility \
@@ -71,14 +72,19 @@ class BasicResponsibleAgent(TheatreActor):
                   resp: Responsibility):
         resp = copy(resp)
         for factor, coefficient in self.interpreting_coefficients.items():
-            for constraint in resp.constraints:
-                if factor in constraint.factors.keys() or factor == constraint.__class__:
+            for constraint_index in range(len(resp.constraints)):
+                old_constraint = resp.constraints[constraint_index]
+                constraint = copy(old_constraint)
+                importance = constraint.importance
 
-                    # Work out the new importance value.
-                    old_importance = constraint.importance
-                    new_importance = old_importance * coefficient
-                    new_importance = max(min(1, new_importance), 0)  # Normalise!
-                    constraint.assign_importance(new_importance)
+                # Work out the new importance value, if there is one.
+                if factor in constraint.factors.keys() or factor == constraint.__class__:
+                    # constraint.interpreted = False
+                    importance = importance * coefficient
+                    importance = max(min(1, importance), 0)  # Normalise!
+
+                constraint.assign_importance(importance)
+                resp.constraints[constraint_index] = constraint
 
         # Return the responsibility with a new set of constraints
         return resp
@@ -102,7 +108,7 @@ class BasicResponsibleAgent(TheatreActor):
         # Get a new list of responsibilities, with importance scores
         # re-interpreted by this agent's perspective on responsibility.
         def re_interpret(resp: Responsibility):
-            resp = deepcopy(resp)
+            resp = copy(resp)
             def restore_original_importance(resp):
                 for constraint in resp.constraints:
                     constraint.reset_importance(constraint.original_importance)
@@ -110,7 +116,9 @@ class BasicResponsibleAgent(TheatreActor):
             restore_original_importance(resp)
             return self.interpret(resp)
         newly_interpreted_resps = [re_interpret(resp)
-                                   for resp in other_agent.responsibilities]
+                                   for resp in
+                                   [c_resp[0] for c_resp in other_agent.consequential_responsibilities]]
+        new_c_resps = zip(newly_interpreted_resps, [c_resp[1] for c_resp in other_agent.consequential_responsibilities])
 
         # ...is the below still accurate?
         # TODO: review.
@@ -127,17 +135,31 @@ class BasicResponsibleAgent(TheatreActor):
                        for responsibility in newly_interpreted_resps
                        for constraint in responsibility.constraints]
         for constraint in constraints:
-            for factor in constraint.factors.keys():
+            if type(constraint) is Deadline:
+                factor = Deadline
                 if factor not in degree_responsible.keys():
                     degree_responsible[factor] = (0, 0)
                 score, count = degree_responsible[factor]
                 count += 1
                 if constraint.outcome:
                     score += constraint.importance
+                degree_responsible[factor] = (score, count)
+            else:
+                for factor in constraint.factors.keys():
+                    if factor not in degree_responsible.keys():
+                        degree_responsible[factor] = (0, 0)
+                    score, count = degree_responsible[factor]
+                    count += 1
+                    if constraint.outcome:
+                        score += constraint.importance
+                    degree_responsible[factor] = (score, count)
 
         for factor, scores in degree_responsible.items():
             score, count = scores
-            degree_responsible[factor] = score/count  # calculate the average
+            if count is 0:
+                degree_responsible[factor] = self.basic_judgement_responsible
+            else:
+                degree_responsible[factor] = score/count  # calculate the average
 
         return degree_responsible
 
@@ -174,7 +196,6 @@ class BasicResponsibleAgent(TheatreActor):
         else:
             resp = max(resps,
                        key=lambda x: sum(x.importances))
-            # print([(resp.calculate_effect(), resp.importances) for resp in self.responsibilities])
             return resp
 
     def next_action(self):
@@ -207,7 +228,9 @@ class BasicResponsibleAgent(TheatreActor):
     def handle_task_return(self, task, value):
         if value is not None:
             discharged_successfully, constraint_satisfactions = value
-            self.consequential_responsibilities.append(constraint_satisfactions)
+            consequential_responsibility = copy(self.current_responsibility)
+            consequential_responsibility.obligation.constraint_set = [copy(c) for c in constraint_satisfactions]
+            self.consequential_responsibilities.append((consequential_responsibility, discharged_successfully))
             if discharged_successfully:
                 if self.current_responsibility not in self.notions:
                     self.responsibilities.remove(self.current_responsibility)
@@ -259,15 +282,6 @@ class HedonisticAgent(BasicResponsibleAgent):
                          workflows,
                          copy(sociotechnical_states),
                          copy(interpreting_coefficients))
-
-    def handle_task_return(self, task, value):
-        if value is not None:
-            discharged_successfully, constraint_satisfactions = value
-            self.consequential_responsibilities.append(constraint_satisfactions)
-            if discharged_successfully:
-                if self.current_responsibility not in self.notions:
-                    self.responsibilities.remove(self.current_responsibility)
-                self.current_responsibility = None
 
 
 class StudiousAgent(BasicResponsibleAgent):

@@ -1,14 +1,15 @@
 from resp_base import Obligation, Deadline, ResourceDelta, ResponsibilityEffect, Act, BasicResponsibleAgent
-from functools import reduce
+from resp_base import mean
 from resp_base import CourseworkWorkflow, IncompetentCourseworkWorkflow, LazyAgent, HedonisticAgent, StudiousAgent
 from theatre_ag.theatre_ag import SynchronizingClock
+from functools import reduce
 import unittest
 
 
 class TestCourseworkModel(unittest.TestCase):
 
     def setUp(self):
-        self.global_clock = SynchronizingClock(max_ticks=100)
+        self.global_clock = SynchronizingClock(max_ticks=1000)
         self.lecturer_count = 1
         self.student_count = 7  # (per type of student)
 
@@ -71,15 +72,16 @@ class TestCourseworkModel(unittest.TestCase):
 
         # Give all students a writing and programming assignment.
         lecturer = self.lecturers[0]
-        for student in self.students:
-            lecturer.delegate_responsibility(essay_writing,
-                                             [0.75
-                                              for item in programming_assignment.constraint_set],
-                                             student)
-            lecturer.delegate_responsibility(programming_assignment,
-                                             [0.4
-                                              for item in programming_assignment.constraint_set],
-                                             student)
+        for i in range(10):
+            for student in self.students:
+                lecturer.delegate_responsibility(essay_writing,
+                                                 [0.75
+                                                  for item in programming_assignment.constraint_set],
+                                                 student)
+                lecturer.delegate_responsibility(programming_assignment,
+                                                 [0.75
+                                                  for item in programming_assignment.constraint_set],
+                                                 student)
 
         for i in range(int(self.global_clock.max_ticks/2)):
             self.global_clock.tick()
@@ -115,20 +117,38 @@ class TestCourseworkModel(unittest.TestCase):
 
         # Lazy agents should write fewer essays on average than studious agents, regardless of competence.
         def results_of_agents(agent_type):
-            results_for_agent = [result
+            results_for_agents = [result
                                  for (agent_class, workflow_class), result in results.items()
                                  if agent_type in [agent_class, workflow_class]]
-            return len(results_for_agent), reduce(dict_sum, results_for_agent)
+            return len(results_for_agents), reduce(dict_sum, results_for_agents)
+        
+        def responsibilities_of_agents(agent_type):
+            results_for_agents = [lecturer.judge_degree_responsible(student)
+                                  for student in self.students
+                                  if agent_type in [type(workflow) for workflow in student.workflows]\
+                                  or student.__class__ is agent_type]
+            return len(results_for_agents), reduce(dict_sum, results_for_agents)
 
         no_hedonistic_agents, hedonistic_agent_results = results_of_agents(HedonisticAgent)
         no_hedonistic_agents *= 7
         no_studious_agents, studious_agent_results = results_of_agents(StudiousAgent)
         no_studious_agents *= 7
 
+        no_competent_agents, competent_responsibility_judgement = responsibilities_of_agents(CourseworkWorkflow)
+        no_incompetent_agents, incompetent_responsibility_judgement = responsibilities_of_agents(IncompetentCourseworkWorkflow)
+
         hedonistic_essay_average = hedonistic_agent_results.get('essays_written', 0) / no_hedonistic_agents
         studious_essay_average = studious_agent_results.get('essays_written', 0) / no_studious_agents
+        competent_responsibility_judgement = mean(competent_responsibility_judgement.values()) / no_competent_agents
+        incompetent_responsibility_judgement = mean(incompetent_responsibility_judgement.values()) / no_incompetent_agents
+
+
         print(hedonistic_essay_average, studious_essay_average)
+        print(competent_responsibility_judgement, incompetent_responsibility_judgement)
+
         self.assertTrue(studious_essay_average > hedonistic_essay_average)
+        # self.assertTrue(competent_responsibility_judgement > incompetent_responsibility_judgement)
+        
 
     def tearDown(self):
         for lecturer in self.lecturers:

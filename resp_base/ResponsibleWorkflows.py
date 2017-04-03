@@ -1,14 +1,13 @@
 from theatre_ag.theatre_ag.workflow import treat_as_workflow
 from random import random, choice
-from time import sleep
 
 
 class CourseworkWorkflow:
 
     def __init__(self):
         self.agent = None
-        self.competence = {'essays_written': 0.9,
-                           'working_programs': 0.9}
+        self.competence = {'essays_written': 0.95,
+                           'working_programs': 0.95}
 
     def assign_agent(self, agent):
         self.agent = agent
@@ -20,52 +19,34 @@ class CourseworkWorkflow:
     #     b: set of constraints with pass/failure
     def write_essay(self, agent):
         written_successfully = (random() < self.competence['essays_written'])
-        written_successfully = True
+        if 'essays_written' not in agent.socio_states.keys():
+            agent.socio_states['essays_written'] = 0
+        for i in range(len(agent.current_responsibility.constraints)):
+            agent.current_responsibility.constraints[i].record_outcome(True)
         if written_successfully:
-            if 'essays_written' not in agent.socio_states.keys():
-                agent.socio_states['essays_written'] = 0
             agent.socio_states['essays_written'] += 1
-            # Essay writing responsibilities have deadlines and essay details
-            for i in range(len(agent.current_responsibility.constraints)):
-                agent.current_responsibility.constraints[i].record_outcome(True)
         else:
-            # Fail to write an essay one in ten times
-            for i in range(len(agent.current_responsibility.constraints)):
-                agent.current_responsibility.constraints[i].record_outcome(True)
-                # One constraint will have failed.
-            failed_responsibility = choice(
-                range(len(agent.current_responsibility.constraints)))
-            agent.current_responsibility.constraints[
-                failed_responsibility].record_outcome(False)
+            choice(agent.current_responsibility.constraints).record_outcome(False)
         return (written_successfully, agent.current_responsibility.constraints)
 
     def write_program(self, agent):
         written_successfully = (random() < self.competence['working_programs'])
-        written_successfully = True
+        if 'working_programs' not in agent.socio_states.keys():
+            agent.socio_states['working_programs'] = 0
+        for i in range(len(agent.current_responsibility.constraints)):
+            agent.current_responsibility.constraints[i].record_outcome(True)
         if written_successfully:
-            if 'working programs' not in agent.socio_states.keys():
-                agent.socio_states['working_programs'] = 0
             agent.socio_states['working_programs'] += 1
-            # programming responsibilities have deadlines and specs
-            for i in range(len(agent.current_responsibility.constraints)):
-                agent.current_responsibility.constraints[i].record_outcome(True)
         else:
-            # Fail to write an essay one in ten times
-            for i in range(len(agent.current_responsibility.constraints)):
-                agent.current_responsibility.constraints[i].record_outcome(True)
-                # One constraint will have failed.
-            failed_responsibility = choice(
-                range(len(agent.current_responsibility.constraints)))
-            agent.current_responsibility.constraints[
-                failed_responsibility].record_outcome(False)
+            choice(agent.current_responsibility.constraints).record_outcome(False)
         return (written_successfully, agent.current_responsibility.constraints)
 
 
 class IncompetentCourseworkWorkflow(CourseworkWorkflow):
     def __init__(self):
         super().__init__()
-        self.competence = {'essays_written': 0.4,
-                           'working_programs': 0.4}
+        self.competence = {'essays_written': 0.2,
+                           'working_programs': 0.2}
 
 
 class DummyWorkflow:
