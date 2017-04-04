@@ -111,9 +111,6 @@ class BasicResponsibleAgent(TheatreActor):
         resps += [r
                   for r in other_agent.responsibilities
                   if r not in other_agent.notions]
-        temp = [r
-                  for r in other_agent.responsibilities
-                  if r not in other_agent.notions]
 
         for responsibility in resps:
             for i in range(len(responsibility.constraints)):
@@ -194,8 +191,6 @@ class BasicResponsibleAgent(TheatreActor):
         else:
             resp = sorted(resps,
                                 key=lambda x: sum(x.importances))[::-1][0]
-            self.TEMP=sorted(resps,
-                                key=lambda x: sum(x.importances))[::-1]
             return resp
 
     def next_action(self):
@@ -231,10 +226,7 @@ class BasicResponsibleAgent(TheatreActor):
             consequential_responsibility = copy(self.current_responsibility)
             consequential_responsibility.obligation.constraint_set = [copy(c) for c in constraint_satisfactions]
             self.consequential_responsibilities.append((consequential_responsibility, discharged_successfully))
-            if discharged_successfully or True:
-                self.responsibilities.pop(self.responsibilities.index(self.current_responsibility))
-                temp = self.current_responsibility in self.responsibilities
-                self.current_responsibility = None
+            self.responsibilities.pop(self.responsibilities.index(self.current_responsibility))
         else:
             if not self.current_responsibility == self.chill_resp:
                 self.responsibilities.pop(self.responsibilities.index(self.current_responsibility))

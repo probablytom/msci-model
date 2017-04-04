@@ -1,4 +1,5 @@
 from theatre_ag.theatre_ag.workflow import treat_as_workflow
+from .Constraints import Deadline
 from random import random, choice
 
 
@@ -26,7 +27,7 @@ class CourseworkWorkflow:
         if written_successfully:
             agent.socio_states['essays_written'] += 1
         else:
-            choice(agent.current_responsibility.constraints).record_outcome(False)
+            choice([c for c in agent.current_responsibility.constraints if type(c) is not Deadline]).record_outcome(False)
         return (written_successfully, agent.current_responsibility.constraints)
 
     def write_program(self, agent):
@@ -38,7 +39,7 @@ class CourseworkWorkflow:
         if written_successfully:
             agent.socio_states['working_programs'] += 1
         else:
-            choice(agent.current_responsibility.constraints).record_outcome(False)
+            choice([c for c in agent.current_responsibility.constraints if type(c) is not Deadline]).record_outcome(False)
         return (written_successfully, agent.current_responsibility.constraints)
 
 
