@@ -47,7 +47,7 @@ class Deadline(AbstractConstraint):
         self.timeline = timeline
         self.duration = duration
 
-    # TODO: REMOVE THIS IN FAVOUR OF AGENT_BASED EVALUATION
+    # TODO: REMOVE THIS IN FAVOUR OF AGENT-BASED EVALUATION
     def evaluate(self):
         return self.factors['length'] < \
             (self.timeline.current_tick - self.time_created)

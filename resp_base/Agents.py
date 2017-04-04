@@ -5,6 +5,7 @@ from .Responsibilities import Responsibility, Obligation
 from abc import ABCMeta
 from .utility_functions import mean, flatten
 from .Responsibilities import Act, ResponsibilityEffect
+from .ResponsibleWorkflows import CourseworkWorkflow, IncompetentCourseworkWorkflow
 from copy import copy, deepcopy
 from time import sleep
 
@@ -29,10 +30,11 @@ class BasicResponsibleAgent(TheatreActor):
         chill_deadline = Deadline(1, clock)
         chill_effect = ResourceDelta({'personal_enjoyment': 1})
         chill = Obligation([chill_deadline,
-                            chill_effect])
-        chill.set_importances([0.2, 0.2])
-        chill_resp = Responsibility(chill, self, self)
-        notions.append(self.interpret(chill_resp))
+                            chill_effect],
+                            name="idle")
+        chill.set_importances([0.25, 0.5])
+        self.chill_resp = Responsibility(chill, self, self)
+        notions.append(self.interpret(self.chill_resp))
 
         self.responsibilities = copy(notions)  # Default beliefs about the world
         self.notions = copy(notions)
@@ -42,7 +44,7 @@ class BasicResponsibleAgent(TheatreActor):
         self.idle_act = Act(ResponsibilityEffect({'personal_enjoyment': 1}),
                             self.idling.idle,
                             self.idling)
-        self.basic_judgement_responsible = 0.5  # How responsible is someone if you don't know what they've done before?
+        self.basic_judgement_responsible = 0.25  # How responsible is someone if you don't know what they've done before?
 
         # Assign all of the workflows to me
         for workflow in self.workflows:
@@ -102,66 +104,62 @@ class BasicResponsibleAgent(TheatreActor):
             self.responsibilities.append(interpreted_responsibility)
         return accepted
 
-    def judge_degree_responsible(self,
-                                 other_agent):
+    def __judge_degree_responsible(self, other_agent):
+        # Re-interpret constraints
+        resps = [r
+                 for r in copy([c[0] for c in other_agent.consequential_responsibilities])]
+        resps += [r
+                  for r in other_agent.responsibilities
+                  if r not in other_agent.notions]
+        temp = [r
+                  for r in other_agent.responsibilities
+                  if r not in other_agent.notions]
 
-        # Get a new list of responsibilities, with importance scores
-        # re-interpreted by this agent's perspective on responsibility.
-        def re_interpret(resp: Responsibility):
-            resp = copy(resp)
-            def restore_original_importance(resp):
-                for constraint in resp.constraints:
-                    constraint.reset_importance(constraint.original_importance)
+        for responsibility in resps:
+            for i in range(len(responsibility.constraints)):
+                constraint = copy(responsibility.constraints[i])
+                constraint.importance = constraint.original_importance
+                responsibility.constraints[i] = self.interpret(constraint)
 
-            restore_original_importance(resp)
-            return self.interpret(resp)
-        newly_interpreted_resps = [re_interpret(resp)
-                                   for resp in
-                                   [c_resp[0] for c_resp in other_agent.consequential_responsibilities]]
-        new_c_resps = zip(newly_interpreted_resps, [c_resp[1] for c_resp in other_agent.consequential_responsibilities])
+        # Calculate each resource type's specific responsibility
+        specific_responsibilities = {}
+        importance = 0
+        outcome = False
+        def process_factor(factor, outcome, importance):
+            if factor not in specific_responsibilities.keys():
+                specific_responsibilities[factor] = (0, 0)
+            score, count = specific_responsibilities[factor]
+            count += 1
+            if outcome is None:
+                outcome = False
+            if outcome:
+                score += importance
+            specific_responsibilities[factor] = (score, count)
 
-        # ...is the below still accurate?
-        # TODO: review.
-        # With these newly interpreted responsibilities, for type of responsibility,
-        # calculate the average of the sum of the constraints of that type multiplied by their success as a boolean.
-        #               -------        ---        ------------------------                     --------------------
-        #                  ^            ^                     ^                                        ^- failure counts as 0
-        #                  |            |                     |-- The responsibility will have many constraints -- calculate each factor seperately.
-        #                  |            |-- Because there's potentially multiple constraints with the same factors, we want to sum the scores of each separate factor.
-        #                  |-- Because there's potentially multiple constraints of the same factor, we want to weight the successes by the failures -- so, calculate the mean of all of the factors' summed scores.
-        #
-        degree_responsible = {}
-        constraints = [constraint
-                       for responsibility in newly_interpreted_resps
-                       for constraint in responsibility.constraints]
-        for constraint in constraints:
-            if type(constraint) is Deadline:
-                factor = Deadline
-                if factor not in degree_responsible.keys():
-                    degree_responsible[factor] = (0, 0)
-                score, count = degree_responsible[factor]
-                count += 1
-                if constraint.outcome:
-                    score += constraint.importance
-                degree_responsible[factor] = (score, count)
-            else:
+        for responsibility in resps:
+            for constraint in responsibility.constraints:
+                importance = constraint.importance
+                outcome = constraint.outcome
+                if type(constraint) == Deadline:
+                    process_factor(Deadline, outcome, importance)
                 for factor in constraint.factors.keys():
-                    if factor not in degree_responsible.keys():
-                        degree_responsible[factor] = (0, 0)
-                    score, count = degree_responsible[factor]
-                    count += 1
-                    if constraint.outcome:
-                        score += constraint.importance
-                    degree_responsible[factor] = (score, count)
+                    process_factor(factor, outcome, importance)
 
-        for factor, scores in degree_responsible.items():
-            score, count = scores
-            if count is 0:
-                degree_responsible[factor] = self.basic_judgement_responsible
-            else:
-                degree_responsible[factor] = score/count  # calculate the average
+        for factor, score_tuple in specific_responsibilities.items():
+            specific_responsibilities[factor] = score_tuple[0]/score_tuple[1]
 
-        return degree_responsible
+        return specific_responsibilities
+
+    def basic_responsibility_judgement(self):
+        return self.basic_judgement_responsible
+
+    def general_responsibility_judgement(self, other_agent):
+        judgement = self.__judge_degree_responsible(other_agent)
+        return mean(judgement.values())
+
+    def specific_responsibility_judgement(self, other_agent, resource_type):
+        return self.__judge_degree_responsible(other_agent).get(resource_type,
+                                                                self.basic_judgement_responsible)
 
     def choose_action(self, responsibility):
         '''
@@ -194,8 +192,10 @@ class BasicResponsibleAgent(TheatreActor):
         if resps == []:
             return None
         else:
-            resp = max(resps,
-                       key=lambda x: sum(x.importances))
+            resp = sorted(resps,
+                                key=lambda x: sum(x.importances))[::-1][0]
+            self.TEMP=sorted(resps,
+                                key=lambda x: sum(x.importances))[::-1]
             return resp
 
     def next_action(self):
@@ -231,10 +231,16 @@ class BasicResponsibleAgent(TheatreActor):
             consequential_responsibility = copy(self.current_responsibility)
             consequential_responsibility.obligation.constraint_set = [copy(c) for c in constraint_satisfactions]
             self.consequential_responsibilities.append((consequential_responsibility, discharged_successfully))
-            if discharged_successfully:
-                if self.current_responsibility not in self.notions:
-                    self.responsibilities.remove(self.current_responsibility)
+            if discharged_successfully or True:
+                self.responsibilities.pop(self.responsibilities.index(self.current_responsibility))
+                temp = self.current_responsibility in self.responsibilities
                 self.current_responsibility = None
+        else:
+            if not self.current_responsibility == self.chill_resp:
+                self.responsibilities.pop(self.responsibilities.index(self.current_responsibility))
+            consequential_responsibility = copy(self.current_responsibility)
+            self.consequential_responsibilities.append((consequential_responsibility, True))
+            self.current_responsibility = None
 
     def register_act(self,
                      act: Act):
@@ -250,22 +256,6 @@ class BasicResponsibleAgent(TheatreActor):
     def get_sociotechnical_state(self, state_key):
         return self.socio_states.get(state_key,
                                      None)
-
-
-class LazyAgent(BasicResponsibleAgent):
-    def __init__(self,
-                 notions,
-                 name,
-                 clock,
-                 workflows: list,
-                 sociotechnical_states = {},
-                 interpreting_coefficients = {Deadline: 0.5}):
-        super().__init__(notions,
-                         name,
-                         clock,
-                         workflows,
-                         copy(sociotechnical_states),
-                         copy(interpreting_coefficients))
 
 
 class HedonisticAgent(BasicResponsibleAgent):
@@ -291,8 +281,24 @@ class StudiousAgent(BasicResponsibleAgent):
                  clock,
                  workflows: list,
                  sociotechnical_states = {},
-                 interpreting_coefficients = {'working_programs': 2,
-                                              'essays_written': 2}):
+                 interpreting_coefficients = {'working_programs': 5,
+                                              'essays_written': 5}):
+        super().__init__(notions,
+                         name,
+                         clock,
+                         workflows,
+                         copy(sociotechnical_states),
+                         copy(interpreting_coefficients))
+
+
+class Lecturer(BasicResponsibleAgent):
+    def __init__(self,
+                 notions,
+                 name,
+                 clock,
+                 workflows: list,
+                 sociotechnical_states = {},
+                 interpreting_coefficients = {}):
         super().__init__(notions,
                          name,
                          clock,

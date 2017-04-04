@@ -1,4 +1,5 @@
 from .Constraints import Deadline, ResourceDelta
+from random import random
 
 
 class UnbalancedImportancesError(Exception):
@@ -6,8 +7,11 @@ class UnbalancedImportancesError(Exception):
 
 
 class Obligation:
-    def __init__(self, constraint_set: list):
+    def __init__(self,
+                 constraint_set: list,
+                 name="unnamed_responsibility"):
         self.constraint_set = constraint_set
+        self.name = name
 
     def set_importances(self, importances):
         if len(importances) != len(self.constraint_set):
@@ -20,7 +24,12 @@ class Responsibility:
     def __init__(self,
                  obligation: Obligation,
                  authority,
-                 delegee):
+                 delegee,
+                 id=None):
+        if id is None:
+            self.id = random() * 100000000
+        else:
+            self.id = id
         self.obligation = obligation
         self.authority = authority
         self.delegee = delegee
@@ -54,6 +63,13 @@ class Responsibility:
                 total_effect['duration'] += constraint.duration
 
         return ResponsibilityEffect(total_effect)
+
+    def __eq__(self, other):
+        return self.id == other.id
+
+    @property
+    def name(self):
+        return self.obligation.name
 
 
 class ResponsibilityEffect:
