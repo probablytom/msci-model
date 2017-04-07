@@ -2,7 +2,6 @@ from resp_base import Obligation, Deadline, ResourceDelta, ResponsibilityEffect,
 from resp_base import CourseworkWorkflow, IncompetentCourseworkWorkflow, HedonisticAgent, StudiousAgent, Lecturer
 from theatre_ag.theatre_ag import SynchronizingClock
 from random import choice, seed
-from functools import reduce
 from copy import copy
 import unittest
 

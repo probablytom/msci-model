@@ -5,9 +5,7 @@ from .Responsibilities import Responsibility, Obligation
 from abc import ABCMeta
 from .utility_functions import mean, flatten
 from .Responsibilities import Act, ResponsibilityEffect
-from .ResponsibleWorkflows import CourseworkWorkflow, IncompetentCourseworkWorkflow
-from copy import copy, deepcopy
-from time import sleep
+from copy import copy
 
 
 class BasicResponsibleAgent(TheatreActor):
