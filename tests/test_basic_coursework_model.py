@@ -8,10 +8,12 @@ import unittest
 
 class TestCourseworkModel(unittest.TestCase):
 
-    def manualSetUp(self):
-        self.global_clock = SynchronizingClock(max_ticks=500)
+    def manualSetUp(self,
+                    max_ticks=100,
+                    number_of_agents=7):
+        self.global_clock = SynchronizingClock(max_ticks=max_ticks)
         self.lecturer_count = 1
-        self.student_count = 7  # (per type of student)
+        self.student_count = number_of_agents  # (per type of student)
 
         self.students = []
         self.lecturers = []
@@ -50,9 +52,12 @@ class TestCourseworkModel(unittest.TestCase):
             self.lecturers.append(curr_lecturer)
 
 
-    def trial(self):
+    def trial(self,
+              complete_ticks=True,
+              number_of_agents=7,
+              max_ticks=100):
         seed(0)
-        self.manualSetUp()
+        self.manualSetUp(max_ticks, number_of_agents)
         lecturer = self.lecturers[0]
         # Give all students a writing and programming assignment.
         for student in self.students:
@@ -90,7 +95,8 @@ class TestCourseworkModel(unittest.TestCase):
                                                   for item in visit_concert.constraint_set],
                                                  student)
 
-        self.global_clock.tick_toc()
+        if complete_ticks:
+            self.global_clock.tick_toc()
 
 
     def test_competence_delta(self):
