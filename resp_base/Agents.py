@@ -42,7 +42,7 @@ class BasicResponsibleAgent(TheatreActor):
         self.idle_act = Act(ResponsibilityEffect({'personal_enjoyment': 1}),
                             self.idling.idle,
                             self.idling)
-        self.basic_judgement_responsible = 0.25  # How responsible is someone if you don't know what they've done before?
+        self.basic_judgement_responsible = 0.5  # How responsible is someone if you don't know what they've done before?
 
         # Assign all of the workflows to me
         for workflow in self.workflows:
@@ -247,6 +247,16 @@ class BasicResponsibleAgent(TheatreActor):
         return self.socio_states.get(state_key,
                                      None)
 
+    def advise(self, other_agent):
+        other_agent.take_advice(self.interpreting_coefficients, self)
+
+    def take_advice(self, advice, authority):
+        # Optionally here, check for whether the authority figure is authoritative enough to listen to.
+        # For now, we blindly accept all advice, so long as it's from a lecturer.
+        if type(authority) is Lecturer:
+            for key, advised_value in self.interpreting_coefficients.items():
+                original_value = self.interpreting_coefficients.get(key, 0)
+                self.interpreting_coefficients[key] = original_value + advised_value
 
 class HedonisticAgent(BasicResponsibleAgent):
     def __init__(self,
