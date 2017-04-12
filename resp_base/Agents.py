@@ -3,9 +3,10 @@ from theatre_ag.theatre_ag.task import Task
 from .Constraints import Deadline, ResourceDelta
 from .Responsibilities import Responsibility, Obligation
 from abc import ABCMeta
-from .utility_functions import mean, flatten
+from .utility_functions import mean
 from .Responsibilities import Act, ResponsibilityEffect
 from copy import copy
+import random
 
 
 class BasicResponsibleAgent(TheatreActor):
@@ -305,3 +306,8 @@ class Lecturer(BasicResponsibleAgent):
                          workflows,
                          copy(sociotechnical_states),
                          copy(interpreting_coefficients))
+
+
+class BullshitAgent(BasicResponsibleAgent):
+    def choose_responsibility(self):
+        return random.choice(self.responsibilities)

@@ -2,11 +2,12 @@ from resp_base import Obligation, Deadline, ResourceDelta, ResponsibilityEffect,
 from resp_base import CourseworkWorkflow, IncompetentCourseworkWorkflow, HedonisticAgent, StudiousAgent, Lecturer
 from theatre_ag.theatre_ag import SynchronizingClock
 from random import choice, seed
+import matplotlib.pyplot as plt
 from copy import copy
 import unittest
 
 
-class TestCourseworkModel(unittest.TestCase):
+class TestTaskSelectionGraphs(unittest.TestCase):
 
     def manualSetUp(self,
                     max_ticks=100,
@@ -101,15 +102,27 @@ class TestCourseworkModel(unittest.TestCase):
 
     def test_competence_delta(self):
         # Competent agents should be judged as more responsible than less competent agents
-        self.trial()
+        self.trial(max_ticks=150,
+                   complete_ticks=False)
         lecturer = self.lecturers[0]
-        competent_judgement_average = mean([lecturer.general_responsibility_judgement(student)
-                                            for student in self.students
-                                            if type(student.workflows[0]) is CourseworkWorkflow])
-        incompetent_judgement_average = mean([lecturer.general_responsibility_judgement(student)
-                                            for student in self.students
-                                            if type(student.workflows[0]) is IncompetentCourseworkWorkflow])
-        self.assertTrue(competent_judgement_average > incompetent_judgement_average)
+        ticks = 0
+        judgements = {'competent': [],
+                      'incompetent': []}
+        while ticks < 150:
+            ticks += 15
+            [self.global_clock.tick() for i in range(15)]
+            judgements['competent'].append(mean([lecturer.general_responsibility_judgement(student)
+                                                 for student in self.students
+                                                 if type(student.workflows[0]) is CourseworkWorkflow]))
+            judgements['incompetent'].append(mean([lecturer.general_responsibility_judgement(student)
+                                                 for student in self.students
+                                                 if type(student.workflows[0]) is IncompetentCourseworkWorkflow]))
+        plt.plot(range(15, 151, 15), judgements['competent'], 'bs',
+                 range(15, 151, 15), judgements['incompetent'], 'g^')
+        plt.xlabel('ticks')
+        plt.ylabel('average general responsibility judgement')
+        plt.savefig('test_competence_delta.svg')
+        # self.assertTrue(competent_judgement_average > incompetent_judgement_average)
 
     def test_agent_type_delta(self):
         # Different types of agents should write different numbers of essays
@@ -118,8 +131,8 @@ class TestCourseworkModel(unittest.TestCase):
                                        for student in self.students
                                        if type(student) is StudiousAgent])
         hedonistic_essay_average = mean([student.socio_states.get('essays_written', 0)
-                                       for student in self.students
-                                       if type(student) is HedonisticAgent])
+                                         for student in self.students
+                                         if type(student) is HedonisticAgent])
         self.assertTrue(studious_essay_average > hedonistic_essay_average)
 
     def test_allocation_by_responsibility(self):
@@ -141,37 +154,47 @@ class TestCourseworkModel(unittest.TestCase):
         self.assertTrue(number_competent_agents_chosen > number_incompetent_agents_chosen)
 
     def test_compare_responsible_allocation_to_standard(self):
-        allocated_agents = [[], []]
-        # Select agents for task allocation according to their responsibility
+        number_excellent_students_selected_responsibly = []
+        number_excellent_students_selected_randomly = []
         for i in range(10):
-            self.trial()
+            print(i)
+            # Select agents for task allocation according to their responsibility
+            allocated_agents = [[], []]
+            self.trial(max_ticks=150,
+                       complete_ticks=False)
             lecturer = self.lecturers[0]
-            best_student_chosen = max(self.students,
-                                      key=lambda x: lecturer.specific_responsibility_judgement(x, 'essays_written'))
-            student_rankings = [(lecturer.specific_responsibility_judgement(student, 'essays_written'), student)
-                                for student in sorted(self.students,
-                                                      key=lambda x: lecturer.specific_responsibility_judgement(x, 'essays_written'))[::-1]]
-            allocated_agents[0].append(best_student_chosen)
-            print(type(best_student_chosen), type(best_student_chosen.workflows[0]))
+            for i in range(10):
+                [self.global_clock.tick() for i in range(15)]
+                best_student_chosen = max(self.students,
+                                          key=lambda x: lecturer.specific_responsibility_judgement(x, 'essays_written'))
+                allocated_agents[0].append(best_student_chosen)
             self.tearDown()
 
-        # Select agents for task allocation randomly
-        for i in range(10):
-            self.trial()
+            # Select agents for task allocation randomly
+            self.trial(max_ticks=150,
+                       complete_ticks=False)
             lecturer = self.lecturers[0]
-            student_chosen = choice(self.students)
-            allocated_agents[1].append(student_chosen)
+            for i in range(10):
+                [self.global_clock.tick() for i in range(15)]
+                student_chosen = choice(self.students)
+                allocated_agents[1].append(student_chosen)
             self.tearDown()
 
-        # Students chosen responsibly should be more studious and more competent.
-        number_excellent_students_selected_responsibly = len([student for student in allocated_agents[0]
-                                                              if type(student.workflows[0]) == CourseworkWorkflow and\
-                                                              student.__class__ == StudiousAgent])
-        number_excellent_students_selected_randomly = len([student for student in allocated_agents[1]
-                                                              if type(student.workflows[0]) == CourseworkWorkflow and \
-                                                              student.__class__ == StudiousAgent])
+            # Students chosen responsibly should be more studious and more competent.
+            number_excellent_students_selected_responsibly.append(len([student for student in allocated_agents[0]
+                                                                  if type(student.workflows[0]) == CourseworkWorkflow and \
+                                                                  student.__class__ == StudiousAgent]))
+            number_excellent_students_selected_randomly.append(len([student for student in allocated_agents[1]
+                                                               if type(student.workflows[0]) == CourseworkWorkflow and \
+                                                               student.__class__ == StudiousAgent]))
 
         print(number_excellent_students_selected_responsibly, number_excellent_students_selected_randomly)
+
+        plt.plot(range(15,151,15), number_excellent_students_selected_responsibly, 'bs',
+                 range(15,151,15), number_excellent_students_selected_randomly, 'g^')
+        plt.ylabel('number of excellent students selected')
+        plt.xlabel('number of ticks')
+        plt.show()
 
         self.assertTrue(number_excellent_students_selected_responsibly > number_excellent_students_selected_randomly)
 

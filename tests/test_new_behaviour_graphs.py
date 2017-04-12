@@ -1,12 +1,13 @@
 from resp_base import Obligation, Deadline, ResourceDelta, ResponsibilityEffect, Act, mean, BullshitAgent
 from resp_base import CourseworkWorkflow, IncompetentCourseworkWorkflow, HedonisticAgent, StudiousAgent, Lecturer
 from theatre_ag.theatre_ag import SynchronizingClock
+import matplotlib.pyplot as plt
 from random import seed
 from copy import copy
 import unittest
 
 
-class TestRQ2(unittest.TestCase):
+class TestBehaviourGraphs(unittest.TestCase):
 
     def manualSetUp(self,
                     max_ticks=100,
@@ -100,36 +101,57 @@ class TestRQ2(unittest.TestCase):
 
 
     def test_adopting_new_behaviour(self):
-        trial_results = [[], []]
+        gradual_trial_results = []
         number_of_trials = 10
+        number_of_ticks = 0
+        while number_of_ticks < 150:
+            trial_results = [[], []]
+            number_of_ticks += 15
 
-        # A set of trials where lecturers advise bad students
-        for i in range(number_of_trials):
-            self.trial(complete_ticks=False)
-            lecturer = self.lecturers[0]
+            # A set of trials where lecturers advise bad students
+            for i in range(number_of_trials):
+                self.trial(complete_ticks=False,
+                           max_ticks=number_of_ticks)
+                lecturer = self.lecturers[0]
 
-            while self.global_clock.current_tick < self.global_clock.max_ticks:
-                self.global_clock.tick()
+                while self.global_clock.current_tick < self.global_clock.max_ticks/2:
+                    self.global_clock.tick()
 
-            for student in self.students:
-                if lecturer.general_responsibility_judgement(student) < lecturer.basic_judgement_responsible:
-                    lecturer.advise(student)
+                for student in self.students:
+                    if lecturer.general_responsibility_judgement(student) < lecturer.basic_judgement_responsible:
+                        lecturer.advise(student)
 
-            self.global_clock.tick_toc()
+                self.global_clock.tick_toc()
 
-            trial_results[0].append(mean([lecturer.general_responsibility_judgement(student)
-                                          for student in self.students]))
+                trial_results[0].append(mean([lecturer.general_responsibility_judgement(student)
+                                              for student in self.students]))
 
-            self.tearDown()
+                self.tearDown()
+            print(number_of_ticks)
+            trial_results[0] = mean(trial_results[0])
 
-        # A set of trials where lecturers do not advise
-        for i in range(number_of_trials):
-            self.trial()
-            lecturer = self.lecturers[0]
-            trial_results[1].append(mean([lecturer.general_responsibility_judgement(student)
-                                          for student in self.students]))
+            # A set of trials where lecturers do not advise
+            for i in range(number_of_trials):
+                self.trial(complete_ticks=True,
+                           max_ticks=number_of_ticks)
+                lecturer = self.lecturers[0]
+                trial_results[1].append(mean([lecturer.general_responsibility_judgement(student)
+                                              for student in self.students]))
+
+            trial_results[1] = mean(trial_results[1])
+            gradual_trial_results.append(trial_results)
+            print(number_of_ticks)
+
+        print(gradual_trial_results)
+
+        plt.plot(range(15, 151, 15), [trial[0] for trial in gradual_trial_results], 'bs',
+                 range(15, 151, 15), [trial[1] for trial in gradual_trial_results], 'g^')
+        plt.xlabel('Number of ticks')
+        plt.ylabel('Average degree of general responsibleness over 10 ticks')
+        plt.show()
 
         # If the experiment is successful, results from the trials involving advice should result in more responsible
         #  ...agents overall, because their responsibility is directed by advice via the formalism's interpretation
         #  ...factors.
         self.assertTrue(mean(trial_results[0]) > mean(trial_results[1]))
+
