@@ -113,10 +113,12 @@ class TestTaskSelectionGraphs(unittest.TestCase):
             [self.global_clock.tick() for i in range(15)]
             judgements['competent'].append(mean([lecturer.general_responsibility_judgement(student)
                                                  for student in self.students
-                                                 if type(student.workflows[0]) is CourseworkWorkflow]))
+                                                 if type(student.workflows[0]) is CourseworkWorkflow and
+                                                 type(student) is StudiousAgent]))
             judgements['incompetent'].append(mean([lecturer.general_responsibility_judgement(student)
                                                  for student in self.students
-                                                 if type(student.workflows[0]) is IncompetentCourseworkWorkflow]))
+                                                 if type(student.workflows[0]) is IncompetentCourseworkWorkflow and
+                                                 type(student) is StudiousAgent]))
         plt.plot(range(15, 151, 15), judgements['competent'], 'bs',
                  range(15, 151, 15), judgements['incompetent'], 'g^')
         plt.xlabel('ticks')
