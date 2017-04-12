@@ -198,6 +198,31 @@ class TestTaskSelectionGraphs(unittest.TestCase):
 
         self.assertTrue(number_excellent_students_selected_responsibly > number_excellent_students_selected_randomly)
 
+    def test_responsibility_directs_behaviour(self):
+        bullshit_judgements = []
+        responsible_judgements = []
+        hedonistic_judgements = []
+        self.trial(max_ticks=150,
+                   complete_ticks=False)
+        lecturer = self.lecturers[0]
+        for i in range(10):
+            [self.global_clock.tick() for i in range(15)]
+            bullshit_judgements.append(mean([lecturer.general_responsibility_judgement(student)
+                                             for student in self.students
+                                             if type(student) is BullshitAgent]))
+            responsible_judgements.append(mean([lecturer.general_responsibility_judgement(student)
+                                                for student in self.students
+                                                if type(student) is StudiousAgent]))
+            hedonistic_judgements.append(mean([lecturer.general_responsibility_judgement(student)
+                                               for student in self.students
+                                               if type(student) is HedonisticAgent]))
+        self.tearDown()
+        plt.plot(range(15,151,15), responsible_judgements, 'bs',
+                 range(15,151,15), hedonistic_judgements, 'rs',
+                 range(15,151,15), bullshit_judgements, 'g^')
+        plt.xlabel('ticks')
+        plt.ylabel('mean degree generally responsible')
+        plt.savefig('test_responsibility_directs_behaviour.svg')
 
     def tearDown(self):
         try:
